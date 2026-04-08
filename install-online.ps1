@@ -95,7 +95,7 @@ try {
   Set-Utf8Output
   Enable-Tls12
 
-  $rawUrl = "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/PACKAGE/install-mcp-kiro.ps1"
+  $rawUrl = "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-mcp-kiro.ps1"
   $localInstaller = Join-Path $env:TEMP "install-mcp-kiro.ps1"
 
   Download-Installer -Url $rawUrl -Destination $localInstaller

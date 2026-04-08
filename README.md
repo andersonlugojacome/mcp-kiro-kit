@@ -24,16 +24,18 @@ Este paquete automatiza:
 ### Opcion A: SIN clonar (one-liner recomendado)
 
 ```powershell
-iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/PACKAGE/install-mcp-kiro.ps1" -OutFile "$env:TEMP\install-mcp-kiro.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-mcp-kiro.ps1"
+iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-mcp-kiro.ps1" -OutFile "$env:TEMP\install-mcp-kiro.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-mcp-kiro.ps1"
 ```
 
 ### Opcion B: script online (`install-online.ps1`)
 
 ```powershell
-iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/PACKAGE/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-online.ps1"
+iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-online.ps1"
 ```
 
 `install-online.ps1` descarga `install-mcp-kiro.ps1` al directorio temporal y lo ejecuta con manejo de errores, TLS 1.2 y salida en UTF-8.
+
+Si la descarga falla, verifica la conexion a internet, que la URL este bien escrita y que no haya un bloqueo de red/proxy.
 
 ### Opcion C: descargar ZIP desde GitHub
 
