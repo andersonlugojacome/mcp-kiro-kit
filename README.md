@@ -33,7 +33,12 @@ iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/mai
 iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1"
 ```
 
-`install-online.ps1` descarga `install-mcp-kiro.ps1` al directorio temporal y lo ejecuta con manejo de errores, TLS 1.2 y salida en UTF-8.
+`install-online.ps1` descarga `install-mcp-kiro.ps1` al directorio temporal, lo ejecuta con manejo de errores/TLS 1.2/salida UTF-8 y luego corre `verify-package.ps1` en modo amigable.
+
+Resultado de verificacion online:
+
+- **OK**: instalacion y validacion final correctas.
+- **WARN**: la validacion detecto algo para revisar, pero la instalacion ya quedo aplicada.
 
 Si la descarga falla, verifica la conexion a internet, que la URL este bien escrita y que no haya un bloqueo de red/proxy.
 
@@ -46,7 +51,7 @@ cd C:\ruta\al\proyecto\PACKAGE
 powershell -ExecutionPolicy RemoteSigned -File .\install-mcp-kiro.ps1
 ```
 
-### Verificacion
+### Verificacion manual (opcional)
 
 Al terminar, ejecuta:
 
