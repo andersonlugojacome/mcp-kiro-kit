@@ -325,7 +325,7 @@ inclusion: always
   }
 }
 
-Write-Info "Inicio de instalacion MCP para Kiro (Windows sin admin)"
+Write-Info "Inicio de instalacion MCP para Kiro (modo usuario local)"
 Ensure-ExecutionPolicy
 Ensure-Scoop
 Ensure-ScoopPackage -CommandName "git" -PackageName "git"
