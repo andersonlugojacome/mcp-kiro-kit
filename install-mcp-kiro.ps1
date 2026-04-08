@@ -332,8 +332,8 @@ Ensure-ScoopPackage -CommandName "git" -PackageName "git"
 Ensure-ScoopPackage -CommandName "node" -PackageName "nodejs-lts"
 Ensure-Npx
 
-$home = [Environment]::GetFolderPath("UserProfile")
-Ensure-KiroMcpSettings -RootPath $home
+$userHome = [Environment]::GetFolderPath("UserProfile")
+Ensure-KiroMcpSettings -RootPath $userHome
 
 if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
   if (Test-Path -LiteralPath $WorkspacePath) {
@@ -344,9 +344,9 @@ if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
   }
 }
 
-Ensure-KiroBaseContent -HomePath $home
+Ensure-KiroBaseContent -HomePath $userHome
 $settingsFiles = @(
-  (Join-Path $home ".kiro/settings/mcp.json")
+  (Join-Path $userHome ".kiro/settings/mcp.json")
 )
 
 if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
