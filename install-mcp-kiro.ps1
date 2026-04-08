@@ -197,13 +197,20 @@ function Invoke-McpPreflight {
     $warnings.Add("npx") | Out-Null
   }
 
-  if (-not (Invoke-PreflightNpxPackage -PackageName "@upstash/context7-mcp" -CheckLabel "Context7")) {
+  $context7Ok = Invoke-PreflightNpxPackage -PackageName "@upstash/context7-mcp" -CheckLabel "Context7"
+  if (-not $context7Ok) {
     $warnings.Add("context7") | Out-Null
   }
 
-  if (-not (Invoke-PreflightNpxPackage -PackageName $MemoryServerPackage -CheckLabel "memory server ($MemoryServerPackage)")) {
+  $memoryOk = Invoke-PreflightNpxPackage -PackageName $MemoryServerPackage -CheckLabel "memory server ($MemoryServerPackage)"
+  if (-not $memoryOk) {
     $warnings.Add("memory") | Out-Null
   }
+
+  $context7Status = if ($context7Ok) { "OK" } else { "WARN" }
+  $memoryStatus = if ($memoryOk) { "OK" } else { "WARN" }
+  Write-Info "Estado Context7: $context7Status"
+  Write-Info "Estado Memory ($MemoryServerPackage): $memoryStatus"
 
   if ($warnings.Count -eq 0) {
     Write-Info "Preflight MCP finalizado: OK"
@@ -280,6 +287,7 @@ function Ensure-KiroMcpSettings {
   $json = $existing | ConvertTo-Json -Depth 20
   Set-Content -LiteralPath $settingsFile -Value $json -Encoding UTF8
   Write-Info "MCP configurado en $settingsFile"
+  Write-Info "Servidores MCP declarados: context7, engram"
 }
 
 function Ensure-KiroBaseContent {
