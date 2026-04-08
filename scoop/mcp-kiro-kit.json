@@ -1,0 +1,9 @@
+{
+  "version": "1.0.0",
+  "description": "MCPKiroKit installer for Windows 11 and Kiro MCP setup",
+  "homepage": "https://github.com/andersonlugojacome/mcp-kiro-kit",
+  "license": "MIT",
+  "url": "https://github.com/andersonlugojacome/mcp-kiro-kit/archive/refs/tags/v1.0.0.zip",
+  "hash": "skip",
+  "bin": "install-mcp-kiro.ps1"
+}

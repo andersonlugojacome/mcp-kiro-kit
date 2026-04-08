@@ -69,6 +69,154 @@ function Ensure-Npx {
   Write-Info "npx OK ($version)"
 }
 
+function Get-MemoryServerPackage {
+  param(
+    [string[]]$SettingsFiles
+  )
+
+  foreach ($settingsFile in $SettingsFiles) {
+    if (-not (Test-Path -LiteralPath $settingsFile)) {
+      continue
+    }
+
+    try {
+      $raw = Get-Content -LiteralPath $settingsFile -Raw
+      if ([string]::IsNullOrWhiteSpace($raw)) {
+        continue
+      }
+
+      $parsed = $raw | ConvertFrom-Json
+      if ($null -eq $parsed -or $null -eq $parsed.mcpServers) {
+        continue
+      }
+
+      foreach ($serverProp in $parsed.mcpServers.PSObject.Properties) {
+        $server = $serverProp.Value
+        if ($null -eq $server -or $null -eq $server.args) {
+          continue
+        }
+
+        foreach ($arg in @($server.args)) {
+          if ($arg -eq "engram-mcp-server") {
+            return "engram-mcp-server"
+          }
+
+          if ($arg -eq "@modelcontextprotocol/server-memory") {
+            return "@modelcontextprotocol/server-memory"
+          }
+        }
+      }
+    }
+    catch {
+      Write-WarnMsg "No se pudo leer $settingsFile para detectar memory server: $($_.Exception.Message)"
+    }
+  }
+
+  return "engram-mcp-server"
+}
+
+function Invoke-PreflightNpxPackage {
+  param(
+    [Parameter(Mandatory = $true)][string]$PackageName,
+    [Parameter(Mandatory = $true)][string]$CheckLabel,
+    [int]$TimeoutSeconds = 25
+  )
+
+  $job = Start-Job -ScriptBlock {
+    param($InnerPackageName)
+
+    $ErrorActionPreference = "Stop"
+    & cmd /c "npx -y $InnerPackageName --help" *> $null
+    if ($LASTEXITCODE -ne 0) {
+      throw "El proceso devolvio codigo $LASTEXITCODE"
+    }
+  } -ArgumentList $PackageName
+
+  try {
+    $completed = Wait-Job -Job $job -Timeout $TimeoutSeconds
+    if (-not $completed) {
+      Stop-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
+      Write-WarnMsg "Preflight $CheckLabel: WARN (timeout de $TimeoutSeconds s)"
+      return $false
+    }
+
+    if ($job.State -eq "Failed") {
+      $jobError = Receive-Job -Job $job -ErrorAction SilentlyContinue
+      if ([string]::IsNullOrWhiteSpace("$jobError")) {
+        $jobError = $job.ChildJobs[0].JobStateInfo.Reason.Message
+      }
+
+      Write-WarnMsg "Preflight $CheckLabel: WARN ($jobError)"
+      return $false
+    }
+
+    Receive-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
+    Write-Info "Preflight $CheckLabel: OK"
+    return $true
+  }
+  finally {
+    Remove-Job -Job $job -Force -ErrorAction SilentlyContinue | Out-Null
+  }
+}
+
+function Invoke-McpPreflight {
+  param(
+    [string]$MemoryServerPackage
+  )
+
+  Write-Info "Ejecutando preflight MCP (validacion rapida de runtime)"
+  $warnings = New-Object System.Collections.Generic.List[string]
+
+  if (Get-Command node -ErrorAction SilentlyContinue) {
+    & cmd /c node --version *> $null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Info "Preflight node: OK"
+    }
+    else {
+      Write-WarnMsg "Preflight node: WARN (node no responde correctamente)"
+      $warnings.Add("node") | Out-Null
+    }
+  }
+  else {
+    Write-WarnMsg "Preflight node: WARN (node no encontrado en PATH de esta sesion)"
+    $warnings.Add("node") | Out-Null
+  }
+
+  if (Get-Command npx -ErrorAction SilentlyContinue) {
+    & cmd /c npx --version *> $null
+    if ($LASTEXITCODE -eq 0) {
+      Write-Info "Preflight npx: OK"
+    }
+    else {
+      Write-WarnMsg "Preflight npx: WARN (npx no responde correctamente)"
+      $warnings.Add("npx") | Out-Null
+    }
+  }
+  else {
+    Write-WarnMsg "Preflight npx: WARN (npx no encontrado en PATH de esta sesion)"
+    $warnings.Add("npx") | Out-Null
+  }
+
+  if (-not (Invoke-PreflightNpxPackage -PackageName "@upstash/context7-mcp" -CheckLabel "Context7")) {
+    $warnings.Add("context7") | Out-Null
+  }
+
+  if (-not (Invoke-PreflightNpxPackage -PackageName $MemoryServerPackage -CheckLabel "memory server ($MemoryServerPackage)")) {
+    $warnings.Add("memory") | Out-Null
+  }
+
+  if ($warnings.Count -eq 0) {
+    Write-Info "Preflight MCP finalizado: OK"
+    return
+  }
+
+  Write-WarnMsg "Preflight MCP finalizado: WARN ($($warnings.Count) chequeo(s) con problema). La instalacion NO se detuvo."
+  Write-Host "  Sugerencias:" -ForegroundColor Yellow
+  Write-Host "  1) Cerrar y abrir una terminal nueva para refrescar PATH." -ForegroundColor Yellow
+  Write-Host "  2) Si estas en red corporativa, revisar proxy/certificados TLS para npm/npx." -ForegroundColor Yellow
+  Write-Host "  3) Fallback: usar @modelcontextprotocol/server-memory en mcp.json si Engram falla." -ForegroundColor Yellow
+}
+
 function Merge-Hashtable {
   param(
     [hashtable]$Base,
@@ -197,4 +345,14 @@ if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
 }
 
 Ensure-KiroBaseContent -HomePath $home
+$settingsFiles = @(
+  (Join-Path $home ".kiro/settings/mcp.json")
+)
+
+if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
+  $settingsFiles += (Join-Path $WorkspacePath ".kiro/settings/mcp.json")
+}
+
+$memoryServerPackage = Get-MemoryServerPackage -SettingsFiles $settingsFiles
+Invoke-McpPreflight -MemoryServerPackage $memoryServerPackage
 Write-Info "Listo. Reinicia Kiro para aplicar la configuracion MCP."
