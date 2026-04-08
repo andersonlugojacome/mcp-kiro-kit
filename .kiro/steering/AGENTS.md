@@ -1,7 +1,7 @@
 # Kiro AGENTS (MCP + Verificacion)
 
 ## Objetivo
-Guiar a Kiro para trabajar con alta confiabilidad tecnica, minimo consumo de tokens y seguridad MCP en equipos Windows sin privilegios de admin.
+Guiar a Kiro para trabajar con alta confiabilidad tecnica, minimo consumo de tokens y seguridad MCP en equipos Windows en modo usuario local.
 
 ## Reglas Operativas
 - Verifica primero: no afirmes nada tecnico sin comprobar archivos, comandos o docs.

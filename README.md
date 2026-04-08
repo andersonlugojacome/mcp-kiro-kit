@@ -24,13 +24,13 @@ Este paquete automatiza:
 ### Opcion A: SIN clonar (one-liner recomendado)
 
 ```powershell
-iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-mcp-kiro.ps1" -OutFile "$env:TEMP\install-mcp-kiro.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-mcp-kiro.ps1"
+iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-mcp-kiro.ps1" -OutFile "$env:TEMP\install-mcp-kiro.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-mcp-kiro.ps1"
 ```
 
 ### Opcion B: script online (`install-online.ps1`)
 
 ```powershell
-iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy Bypass -File "$env:TEMP\install-online.ps1"
+iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1"
 ```
 
 `install-online.ps1` descarga `install-mcp-kiro.ps1` al directorio temporal y lo ejecuta con manejo de errores, TLS 1.2 y salida en UTF-8.
@@ -43,7 +43,7 @@ Si la descarga falla, verifica la conexion a internet, que la URL este bien escr
 # 1) Descarga y extrae el ZIP desde GitHub en una carpeta local
 # 2) Entra a la carpeta PACKAGE del proyecto extraido
 cd C:\ruta\al\proyecto\PACKAGE
-powershell -ExecutionPolicy Bypass -File .\install-mcp-kiro.ps1
+powershell -ExecutionPolicy RemoteSigned -File .\install-mcp-kiro.ps1
 ```
 
 ### Verificacion
@@ -51,7 +51,7 @@ powershell -ExecutionPolicy Bypass -File .\install-mcp-kiro.ps1
 Al terminar, ejecuta:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\verify-package.ps1
+powershell -ExecutionPolicy RemoteSigned -File .\verify-package.ps1
 ```
 
 Si todo sale bien, el script de verificacion confirma dependencias y configuracion MCP.
@@ -183,7 +183,7 @@ Al finalizar, reinicia Kiro para confirmar que ya no cargue servidores o recurso
 - **ExecutionPolicy bloquea scripts**
   - Ejecuta PowerShell con permisos de tu usuario y usa:
     ```powershell
-    powershell -ExecutionPolicy Bypass -File .\install-mcp-kiro.ps1
+    powershell -ExecutionPolicy RemoteSigned -File .\install-mcp-kiro.ps1
     ```
 - **`npx` no se reconoce**
   - Cierra y abre la terminal.

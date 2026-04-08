@@ -76,7 +76,7 @@ function Run-Installer {
   )
 
   $args = @(
-    "-ExecutionPolicy", "Bypass",
+    "-ExecutionPolicy", "RemoteSigned",
     "-File", $InstallerPath
   )
 

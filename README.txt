@@ -1,4 +1,4 @@
-PAQUETE MCP PARA KIRO (WINDOWS, SIN ADMIN)
+PAQUETE MCP PARA KIRO (WINDOWS, MODO USUARIO LOCAL)
 
 1) Copia la carpeta `.kiro` de este PACKAGE a tu home de Windows:
    `C:\Users\<tu-usuario>\.kiro`
@@ -23,5 +23,5 @@ Ejemplo de cambio de args de engram:
 
 Que es `npx` y por que ayuda:
 - `npx` ejecuta paquetes de npm sin instalarlos globalmente de forma manual.
-- En equipos sin admin reduce friccion porque no depende de instalaciones globales permanentes.
+- En modo usuario local reduce friccion porque no depende de instalaciones globales permanentes.
 - Mantiene el setup mas reproducible entre teammates: mismo comando, mismo resultado esperado.

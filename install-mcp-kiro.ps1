@@ -16,7 +16,7 @@ function Write-WarnMsg {
 
 function Ensure-ExecutionPolicy {
   $policy = Get-ExecutionPolicy -Scope CurrentUser
-  if ($policy -in @("RemoteSigned", "Unrestricted", "Bypass", "AllSigned")) {
+  if ($policy -in @("RemoteSigned", "Unrestricted", "AllSigned")) {
     Write-Info "ExecutionPolicy(CurrentUser) ya esta en $policy"
     return
   }
@@ -31,7 +31,7 @@ function Ensure-Scoop {
     return
   }
 
-  Write-Info "Instalando Scoop (modo usuario, sin admin)"
+  Write-Info "Instalando Scoop (modo usuario local)"
   Invoke-RestMethod -Uri "https://get.scoop.sh" | Invoke-Expression
   if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
     throw "No se pudo instalar Scoop."
