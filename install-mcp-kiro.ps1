@@ -136,7 +136,7 @@ function Invoke-PreflightNpxPackage {
     $completed = Wait-Job -Job $job -Timeout $TimeoutSeconds
     if (-not $completed) {
       Stop-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
-      Write-WarnMsg "Preflight $CheckLabel: WARN (timeout de $TimeoutSeconds s)"
+      Write-WarnMsg "Preflight ${CheckLabel}: WARN (timeout de $TimeoutSeconds s)"
       return $false
     }
 
@@ -146,12 +146,12 @@ function Invoke-PreflightNpxPackage {
         $jobError = $job.ChildJobs[0].JobStateInfo.Reason.Message
       }
 
-      Write-WarnMsg "Preflight $CheckLabel: WARN ($jobError)"
+      Write-WarnMsg "Preflight ${CheckLabel}: WARN ($jobError)"
       return $false
     }
 
     Receive-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
-    Write-Info "Preflight $CheckLabel: OK"
+    Write-Info "Preflight ${CheckLabel}: OK"
     return $true
   }
   finally {
