@@ -61,11 +61,12 @@ if ($null -ne $kiroCli) {
   Write-Ok "Kiro CLI detectado: kiro-cli ($($kiroCli.Source))"
 }
 elseif ($null -ne $kiro) {
-  Write-Ok "Kiro CLI detectado: kiro ($($kiro.Source))"
+  Write-Ok "Comando Kiro detectado: kiro ($($kiro.Source))"
+  Write-WarnMsg "En Windows puede no estar disponible el binario kiro-cli oficial. Usa 'kiro'."
 }
 else {
-  Write-WarnMsg "No se detecto Kiro CLI en PATH (comandos probados: kiro-cli, kiro)."
-  Write-WarnMsg "Si queres usar CLI, instala Kiro CLI y abre una terminal nueva."
+  Write-WarnMsg "No se detecto comando Kiro en PATH (comandos probados: kiro-cli, kiro)."
+  Write-WarnMsg "Verifica instalacion de Kiro y abre una terminal nueva."
 }
 
 $skillsRoot = Join-Path $userHome ".kiro/skills"
