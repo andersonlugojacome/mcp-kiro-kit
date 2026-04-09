@@ -456,6 +456,24 @@ function Invoke-DailyUpdateNotice {
   }
 }
 
+function Show-KiroCliStatus {
+  $kiroCli = Get-Command kiro-cli -ErrorAction SilentlyContinue
+  $kiro = Get-Command kiro -ErrorAction SilentlyContinue
+
+  if ($null -ne $kiroCli) {
+    Write-Info "Kiro CLI detectado: kiro-cli ($($kiroCli.Source))"
+    return
+  }
+
+  if ($null -ne $kiro) {
+    Write-Info "Kiro CLI detectado: kiro ($($kiro.Source))"
+    return
+  }
+
+  Write-WarnMsg "Kiro CLI no detectado en PATH (comandos probados: kiro-cli, kiro)."
+  Write-WarnMsg "Si queres usar CLI, instala/actualiza Kiro CLI y abre una terminal nueva."
+}
+
 Write-Info "Inicio de instalacion MCP para Kiro (modo usuario local)"
 Ensure-ExecutionPolicy
 Ensure-Scoop
@@ -493,4 +511,5 @@ if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
 
 $memoryServerPackage = Get-MemoryServerPackage -SettingsFiles $settingsFiles
 Invoke-McpPreflight -MemoryServerPackage $memoryServerPackage
+Show-KiroCliStatus
 Write-Info "Listo. Reinicia Kiro para aplicar la configuracion MCP."

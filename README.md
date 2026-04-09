@@ -64,6 +64,8 @@ Si todo sale bien, el script de verificacion confirma dependencias y configuraci
 Tambien valida que haya skills reales instaladas (`SKILL.md`) en `~/.kiro/skills`.
 Tambien informa si detecta Kiro CLI en PATH (`kiro-cli` o `kiro`).
 
+Nota: el instalador principal (`install-mcp-kiro.ps1`) tambien muestra el estado de Kiro CLI al final.
+
 Chequeo manual rapido de Kiro CLI:
 
 ```powershell
