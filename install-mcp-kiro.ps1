@@ -474,6 +474,35 @@ function Show-KiroCliStatus {
   Write-WarnMsg "Si queres usar CLI, instala/actualiza Kiro CLI y abre una terminal nueva."
 }
 
+function Ensure-KiroCliShim {
+  $kiroCli = Get-Command kiro-cli -ErrorAction SilentlyContinue
+  if ($null -ne $kiroCli) {
+    return
+  }
+
+  $kiro = Get-Command kiro -ErrorAction SilentlyContinue
+  if ($null -eq $kiro) {
+    return
+  }
+
+  $shimDir = Join-Path $env:USERPROFILE "scoop\shims"
+  if (-not (Test-Path -LiteralPath $shimDir)) {
+    Write-WarnMsg "No se encontro carpeta de shims de Scoop para crear alias kiro-cli."
+    return
+  }
+
+  $shimPath = Join-Path $shimDir "kiro-cli.cmd"
+  $shimContent = "@echo off`r`nkiro %*`r`n"
+
+  try {
+    Set-Content -LiteralPath $shimPath -Value $shimContent -Encoding ASCII -Force
+    Write-Info "Alias creado: kiro-cli -> kiro ($shimPath)"
+  }
+  catch {
+    Write-WarnMsg "No se pudo crear alias kiro-cli: $($_.Exception.Message)"
+  }
+}
+
 Write-Info "Inicio de instalacion MCP para Kiro (modo usuario local)"
 Ensure-ExecutionPolicy
 Ensure-Scoop
@@ -511,5 +540,6 @@ if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
 
 $memoryServerPackage = Get-MemoryServerPackage -SettingsFiles $settingsFiles
 Invoke-McpPreflight -MemoryServerPackage $memoryServerPackage
+Ensure-KiroCliShim
 Show-KiroCliStatus
 Write-Info "Listo. Reinicia Kiro para aplicar la configuracion MCP."

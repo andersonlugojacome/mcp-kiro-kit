@@ -63,6 +63,7 @@ Si todo sale bien, el script de verificacion confirma dependencias y configuraci
 
 Tambien valida que haya skills reales instaladas (`SKILL.md`) en `~/.kiro/skills`.
 Tambien informa si detecta Kiro CLI en PATH (`kiro-cli` o `kiro`).
+Si detecta `kiro` pero no `kiro-cli`, el instalador crea alias de compatibilidad `kiro-cli` en `scoop/shims`.
 
 Nota: el instalador principal (`install-mcp-kiro.ps1`) tambien muestra el estado de Kiro CLI al final.
 
@@ -371,6 +372,7 @@ Lista inicial por features para evolucionar el kit:
     Get-Command kiro -ErrorAction SilentlyContinue
     ```
   - Si no aparece, instala/actualiza Kiro CLI y abre una terminal nueva para refrescar PATH.
+  - Si `kiro` existe pero `kiro-cli` no, vuelve a correr el instalador para regenerar alias de compatibilidad.
 - **`SKILL.md not for skill` en `_shared`**
   - Si aparece `~/.kiro/skills/_shared/SKILL.md`, es un archivo legado no valido.
   - Borralo y corre update:
