@@ -2,7 +2,7 @@
 
 > One command. Any agent. Any OS. The MCPKiroKit ecosystem -- configured and ready.
 
-**Version: 1.0.3**
+**Version: 1.0.4**
 
 Paquete listo para dejar tu entorno de Kiro funcionando en Windows 11 con una instalacion guiada por **un solo script**.
 
