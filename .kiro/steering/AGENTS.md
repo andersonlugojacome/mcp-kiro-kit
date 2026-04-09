@@ -33,6 +33,12 @@ Guiar a Kiro para trabajar con alta confiabilidad tecnica, minimo consumo de tok
 - Si hay conflicto entre global y local, priorizar local del equipo.
 - Mantener rutas portables dentro de `.kiro/skills`.
 
+## Reuso Inteligente (Engram + Context7)
+- Antes de implementar una tarea nueva, verificar si ya existe solucion previa en memoria (Engram).
+- Si la tarea parece repetida, recuperar enfoque anterior y evitar rehacer diagnostico desde cero.
+- Cuando falte base tecnica o documentacion actualizada, consultar Context7 primero y citar la fuente usada.
+- Priorizar: 1) contexto local del proyecto, 2) memoria Engram, 3) docs en Context7.
+
 ## Criterio de Calidad de Entrega
 - Configuracion reproducible para teammates nuevos.
 - Documentacion corta, verificable y sin ambiguedades.

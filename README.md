@@ -15,7 +15,7 @@ Este paquete automatiza:
 - **Node.js LTS** (incluye npm).
 - **NPX** para ejecutar herramientas Node sin instalarlas globalmente.
 - **Configuracion MCP para Kiro** con servidores de **Context7** y **Engram**.
-- Archivos base de **steering** y **skills** para trabajar con mejores practicas en flujos asistidos por IA.
+- Sincronizacion de **steering** y **skills** oficiales del repo a `~/.kiro` para que no quede vacio.
 
 ## Instalacion rapida
 
@@ -60,6 +60,8 @@ powershell -ExecutionPolicy RemoteSigned -File .\verify-package.ps1
 ```
 
 Si todo sale bien, el script de verificacion confirma dependencias y configuracion MCP.
+
+Tambien valida que haya skills reales instaladas (`SKILL.md`) en `~/.kiro/skills`.
 
 ### Preflight MCP al finalizar instalacion
 

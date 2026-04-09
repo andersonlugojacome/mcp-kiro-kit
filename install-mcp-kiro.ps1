@@ -333,6 +333,78 @@ inclusion: always
   }
 }
 
+function Copy-KiroAssets {
+  param(
+    [Parameter(Mandatory = $true)][string]$SourceKiroRoot,
+    [Parameter(Mandatory = $true)][string]$TargetRoot,
+    [string]$TargetLabel = "usuario"
+  )
+
+  $sourceSteering = Join-Path $SourceKiroRoot "steering"
+  $sourceSkills = Join-Path $SourceKiroRoot "skills"
+  $targetKiroRoot = Join-Path $TargetRoot ".kiro"
+  $targetSteering = Join-Path $targetKiroRoot "steering"
+  $targetSkills = Join-Path $targetKiroRoot "skills"
+
+  if (-not (Test-Path -LiteralPath $sourceSteering) -or -not (Test-Path -LiteralPath $sourceSkills)) {
+    throw "No se encontraron carpetas .kiro/steering y .kiro/skills en el paquete descargado."
+  }
+
+  New-Item -ItemType Directory -Path $targetSteering -Force | Out-Null
+  New-Item -ItemType Directory -Path $targetSkills -Force | Out-Null
+
+  Copy-Item -Path (Join-Path $sourceSteering "*") -Destination $targetSteering -Recurse -Force
+  Copy-Item -Path (Join-Path $sourceSkills "*") -Destination $targetSkills -Recurse -Force
+
+  $skillFiles = Get-ChildItem -Path $targetSkills -Recurse -Filter "SKILL.md" -ErrorAction SilentlyContinue
+  $skillCount = @($skillFiles).Count
+
+  Write-Info "Steering y skills sincronizados para $TargetLabel en $targetKiroRoot"
+  Write-Info "Skills detectadas en $TargetLabel: $skillCount"
+}
+
+function Sync-KiroAssetsFromRepo {
+  param(
+    [Parameter(Mandatory = $true)][string]$HomePath,
+    [string]$WorkspacePath = ""
+  )
+
+  $zipUrl = "https://github.com/andersonlugojacome/mcp-kiro-kit/archive/refs/heads/main.zip"
+  $tempRoot = Join-Path $env:TEMP "mcpkirokit-assets"
+  $zipPath = Join-Path $tempRoot "mcp-kiro-kit-main.zip"
+  $extractPath = Join-Path $tempRoot "extracted"
+
+  try {
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+    if (Test-Path -LiteralPath $extractPath) {
+      Remove-Item -LiteralPath $extractPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    Write-Info "Descargando assets de steering/skills desde el repositorio..."
+    Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+    if (-not (Test-Path -LiteralPath $zipPath)) {
+      throw "No se pudo descargar el paquete de assets."
+    }
+
+    Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
+    $repoRoot = Join-Path $extractPath "mcp-kiro-kit-main"
+    $sourceKiroRoot = Join-Path $repoRoot ".kiro"
+
+    Copy-KiroAssets -SourceKiroRoot $sourceKiroRoot -TargetRoot $HomePath -TargetLabel "usuario"
+
+    if (-not [string]::IsNullOrWhiteSpace($WorkspacePath) -and (Test-Path -LiteralPath $WorkspacePath)) {
+      Copy-KiroAssets -SourceKiroRoot $sourceKiroRoot -TargetRoot $WorkspacePath -TargetLabel "workspace"
+    }
+
+    return $true
+  }
+  catch {
+    Write-WarnMsg "No se pudieron sincronizar skills/steering completos desde el repo: $($_.Exception.Message)"
+    Write-WarnMsg "Se mantiene configuracion base local para no bloquear la instalacion."
+    return $false
+  }
+}
+
 Write-Info "Inicio de instalacion MCP para Kiro (modo usuario local)"
 Ensure-ExecutionPolicy
 Ensure-Scoop
@@ -352,7 +424,10 @@ if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
   }
 }
 
-Ensure-KiroBaseContent -HomePath $userHome
+$assetsSynced = Sync-KiroAssetsFromRepo -HomePath $userHome -WorkspacePath $WorkspacePath
+if (-not $assetsSynced) {
+  Ensure-KiroBaseContent -HomePath $userHome
+}
 $settingsFiles = @(
   (Join-Path $userHome ".kiro/settings/mcp.json")
 )

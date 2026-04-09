@@ -14,6 +14,7 @@ Tener Kiro operativo con MCP de forma segura, portable e idempotente.
 4. Probar cada server con `cmd /c npx -y <package> --help` para detectar fallos temprano.
 5. Reiniciar Kiro para levantar configuracion nueva.
 6. Ejecutar una consulta de humo: docs en Context7 + registro en Engram.
+7. Antes de iniciar tareas nuevas, revisar si ya existe solucion previa en Engram y reutilizarla.
 
 ## Buenas Practicas
 - Mantener JSON limpio y valido, sin comentarios.

@@ -11,14 +11,14 @@ function Write-Fail {
 }
 
 $failed = $false
-$home = [Environment]::GetFolderPath("UserProfile")
+$userHome = [Environment]::GetFolderPath("UserProfile")
 
 $requiredPaths = @(
-  (Join-Path $home ".kiro"),
-  (Join-Path $home ".kiro/settings"),
-  (Join-Path $home ".kiro/settings/mcp.json"),
-  (Join-Path $home ".kiro/steering"),
-  (Join-Path $home ".kiro/skills")
+  (Join-Path $userHome ".kiro"),
+  (Join-Path $userHome ".kiro/settings"),
+  (Join-Path $userHome ".kiro/settings/mcp.json"),
+  (Join-Path $userHome ".kiro/steering"),
+  (Join-Path $userHome ".kiro/skills")
 )
 
 foreach ($path in $requiredPaths) {
@@ -31,7 +31,7 @@ foreach ($path in $requiredPaths) {
   }
 }
 
-$mcpPath = Join-Path $home ".kiro/settings/mcp.json"
+$mcpPath = Join-Path $userHome ".kiro/settings/mcp.json"
 if (Test-Path -LiteralPath $mcpPath) {
   try {
     $json = Get-Content -LiteralPath $mcpPath -Raw | ConvertFrom-Json
@@ -45,6 +45,19 @@ if (Test-Path -LiteralPath $mcpPath) {
   }
   catch {
     Write-Fail "mcp.json invalido: $($_.Exception.Message)"
+    $failed = $true
+  }
+}
+
+$skillsRoot = Join-Path $userHome ".kiro/skills"
+if (Test-Path -LiteralPath $skillsRoot) {
+  $skillFiles = Get-ChildItem -Path $skillsRoot -Recurse -Filter "SKILL.md" -ErrorAction SilentlyContinue
+  $skillCount = @($skillFiles).Count
+  if ($skillCount -gt 0) {
+    Write-Ok "Skills detectadas: $skillCount"
+  }
+  else {
+    Write-Fail "No se detectaron skills instaladas (SKILL.md)."
     $failed = $true
   }
 }
