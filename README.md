@@ -112,8 +112,17 @@ Estas son las skills incluidas y su funcion principal:
 | `sdd-archive` | Consolida y archiva un cambio SDD completado. | Al finalizar ciclo completo (proposal/spec/design/tasks/apply/verify). |
 | `skill-creator` | Crea nuevas skills siguiendo el formato oficial. | Cuando el equipo necesita automatizar un patron nuevo. |
 | `go-testing` | Aplica patrones de testing en Go (incluye Bubbletea/TUI). | Cuando se escriben pruebas Go o se aumenta cobertura. |
+| `kiro-update-assistant` | Entrega instrucciones de update cuando el usuario pide "actualizame". | Cuando se necesita actualizar MCPKiroKit o forzar update limpio por cache. |
 
 Nota: la carpeta `_shared` contiene documentos de apoyo para estas skills y no se considera una skill ejecutable.
+
+### Update por comando natural
+
+Con la skill `kiro-update-assistant`, cuando en Kiro escribas algo como **"actualizame"**, el agente puede responder con:
+
+- comando de actualizacion online recomendado,
+- alternativa con cache-busting si detectas errores viejos,
+- y verificacion final para confirmar estado `OK/WARN`.
 
 ## Distribucion con Scoop bucket
 
