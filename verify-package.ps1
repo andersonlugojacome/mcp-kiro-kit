@@ -10,6 +10,11 @@ function Write-Fail {
   Write-Host "[FAIL] $Message" -ForegroundColor Red
 }
 
+function Write-WarnMsg {
+  param([string]$Message)
+  Write-Host "[WARN] $Message" -ForegroundColor Yellow
+}
+
 $failed = $false
 $userHome = [Environment]::GetFolderPath("UserProfile")
 
@@ -47,6 +52,20 @@ if (Test-Path -LiteralPath $mcpPath) {
     Write-Fail "mcp.json invalido: $($_.Exception.Message)"
     $failed = $true
   }
+}
+
+$kiroCli = Get-Command kiro-cli -ErrorAction SilentlyContinue
+$kiro = Get-Command kiro -ErrorAction SilentlyContinue
+
+if ($null -ne $kiroCli) {
+  Write-Ok "Kiro CLI detectado: kiro-cli ($($kiroCli.Source))"
+}
+elseif ($null -ne $kiro) {
+  Write-Ok "Kiro CLI detectado: kiro ($($kiro.Source))"
+}
+else {
+  Write-WarnMsg "No se detecto Kiro CLI en PATH (comandos probados: kiro-cli, kiro)."
+  Write-WarnMsg "Si queres usar CLI, instala Kiro CLI y abre una terminal nueva."
 }
 
 $skillsRoot = Join-Path $userHome ".kiro/skills"

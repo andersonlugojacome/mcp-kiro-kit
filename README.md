@@ -62,6 +62,14 @@ powershell -ExecutionPolicy RemoteSigned -File .\verify-package.ps1
 Si todo sale bien, el script de verificacion confirma dependencias y configuracion MCP.
 
 Tambien valida que haya skills reales instaladas (`SKILL.md`) en `~/.kiro/skills`.
+Tambien informa si detecta Kiro CLI en PATH (`kiro-cli` o `kiro`).
+
+Chequeo manual rapido de Kiro CLI:
+
+```powershell
+Get-Command kiro-cli -ErrorAction SilentlyContinue
+Get-Command kiro -ErrorAction SilentlyContinue
+```
 
 ### Preflight MCP al finalizar instalacion
 
@@ -354,6 +362,13 @@ Lista inicial por features para evolucionar el kit:
   - Revisa que la configuracion MCP exista y sea JSON valido.
   - Reinicia Kiro por completo.
   - Ejecuta `verify-package.ps1` para validar rutas y comandos.
+- **`kiro-cli` o `kiro` no se reconoce**
+  - Verifica si el comando existe:
+    ```powershell
+    Get-Command kiro-cli -ErrorAction SilentlyContinue
+    Get-Command kiro -ErrorAction SilentlyContinue
+    ```
+  - Si no aparece, instala/actualiza Kiro CLI y abre una terminal nueva para refrescar PATH.
 - **`SKILL.md not for skill` en `_shared`**
   - Si aparece `~/.kiro/skills/_shared/SKILL.md`, es un archivo legado no valido.
   - Borralo y corre update:
