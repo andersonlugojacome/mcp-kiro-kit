@@ -360,7 +360,7 @@ function Copy-KiroAssets {
   $skillCount = @($skillFiles).Count
 
   Write-Info "Steering y skills sincronizados para $TargetLabel en $targetKiroRoot"
-  Write-Info "Skills detectadas en $TargetLabel: $skillCount"
+  Write-Info "Skills detectadas en ${TargetLabel}: $skillCount"
 }
 
 function Sync-KiroAssetsFromRepo {
