@@ -356,6 +356,12 @@ function Copy-KiroAssets {
   Copy-Item -Path (Join-Path $sourceSteering "*") -Destination $targetSteering -Recurse -Force
   Copy-Item -Path (Join-Path $sourceSkills "*") -Destination $targetSkills -Recurse -Force
 
+  $legacySharedSkillPath = Join-Path $targetSkills "_shared/SKILL.md"
+  if (Test-Path -LiteralPath $legacySharedSkillPath) {
+    Remove-Item -LiteralPath $legacySharedSkillPath -Force -ErrorAction SilentlyContinue
+    Write-Info "Removido archivo legado no valido: $legacySharedSkillPath"
+  }
+
   $skillFiles = Get-ChildItem -Path $targetSkills -Recurse -Filter "SKILL.md" -ErrorAction SilentlyContinue
   $skillCount = @($skillFiles).Count
 

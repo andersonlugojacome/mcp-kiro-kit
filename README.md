@@ -244,6 +244,13 @@ Al finalizar, reinicia Kiro para confirmar que ya no cargue servidores o recurso
   - Revisa que la configuracion MCP exista y sea JSON valido.
   - Reinicia Kiro por completo.
   - Ejecuta `verify-package.ps1` para validar rutas y comandos.
+- **`SKILL.md not for skill` en `_shared`**
+  - Si aparece `~/.kiro/skills/_shared/SKILL.md`, es un archivo legado no valido.
+  - Borralo y corre update:
+    ```powershell
+    Remove-Item "$env:USERPROFILE\.kiro\skills\_shared\SKILL.md" -ErrorAction SilentlyContinue
+    iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1"
+    ```
 
 ## Seguridad
 
