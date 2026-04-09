@@ -225,6 +225,62 @@ Si en algun momento queres remover todo lo instalado por este paquete, segui est
 
 Al finalizar, reinicia Kiro para confirmar que ya no cargue servidores o recursos removidos.
 
+## Roadmap (futuro)
+
+### KIRO Powers
+
+Lista inicial por features para evolucionar el kit:
+
+- **Power 1: Contexto inteligente por proyecto**
+  - Deteccion automatica de stack, frameworks y runner de tests.
+  - Recomendaciones de comandos segun tipo de repo.
+
+- **Power 2: Reuso con memoria (Engram-first)**
+  - Buscar soluciones previas antes de proponer cambios nuevos.
+  - Resumen de decisiones anteriores para evitar retrabajo.
+
+- **Power 3: Soporte de documentacion viva (Context7)**
+  - Consulta automatica de docs actualizadas para librerias detectadas.
+  - Referencias de fuente en respuestas tecnicas clave.
+
+- **Power 4: Health check ampliado**
+  - Verificacion de skills instaladas, conectividad MCP y estado de mcp.json.
+  - Reporte final en formato simple: OK, WARN, BLOQUEO.
+
+- **Power 5: Actualizacion guiada**
+  - Update seguro de instalador, steering y skills con cache-busting.
+  - Notas de cambios cortas para usuarios no tecnicos.
+
+- **Power 6: Perfil de equipo (Team preset)**
+  - Presets de reglas y flujo por tipo de equipo/proyecto.
+  - Configuracion reproducible para onboarding rapido.
+
+### KIRO Powers for Teams
+
+- **Power 7: Team governance**
+  - Politicas por equipo para definir herramientas permitidas, acciones restringidas y niveles de aprobacion.
+  - Reglas claras para auditoria y uso seguro en ambientes corporativos.
+
+- **Power 8: Perfiles por tipo de proyecto**
+  - Plantillas listas (`frontend`, `backend`, `data`, `mobile`) con steering y skills recomendadas.
+  - Menos configuracion manual y mejor consistencia entre equipos.
+
+- **Power 9: Memoria con trazabilidad**
+  - Cuando se reutilice una solucion de Engram, mostrar origen resumido (que, cuando y en que contexto).
+  - Evita retrabajo y mejora transferencia de conocimiento.
+
+- **Power 10: Canales de actualizacion**
+  - Canal `stable` para adopcion general y canal `canary` para pruebas tempranas.
+  - Reduce riesgo al desplegar mejoras de instalacion y skills.
+
+- **Power 11: Diagnostico corporativo previo**
+  - Chequeo de conectividad, proxy/certificados y resolucion npm antes de ejecutar MCP.
+  - Recomendaciones automaticas para resolver bloqueos frecuentes.
+
+- **Power 12: Reporte final para soporte**
+  - Salida estandar `OK`, `WARN` o `BLOQUEO` con causa principal y siguiente paso sugerido.
+  - Facilita soporte de mesa de ayuda y seguimiento tecnico.
+
 ## Troubleshooting rapido
 
 - **ExecutionPolicy bloquea scripts**
