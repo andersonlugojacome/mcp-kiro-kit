@@ -114,6 +114,7 @@ Estas son las skills incluidas y su funcion principal:
 | `skill-creator` | Crea nuevas skills siguiendo el formato oficial. | Cuando el equipo necesita automatizar un patron nuevo. |
 | `go-testing` | Aplica patrones de testing en Go (incluye Bubbletea/TUI). | Cuando se escriben pruebas Go o se aumenta cobertura. |
 | `kiro-update-assistant` | Entrega instrucciones de update cuando el usuario pide "actualizame". | Cuando se necesita actualizar MCPKiroKit o forzar update limpio por cache. |
+| `mcp-status-assistant` | Muestra estatus MCP (config, runtime, tipo DB y tamano de Engram). | Cuando el usuario pide "estatus" o "estado mcp". |
 
 Nota: la carpeta `_shared` contiene documentos de apoyo para estas skills y no se considera una skill ejecutable.
 
@@ -124,6 +125,15 @@ Con la skill `kiro-update-assistant`, cuando en Kiro escribas algo como **"actua
 - comando de actualizacion online recomendado,
 - alternativa con cache-busting si detectas errores viejos,
 - y verificacion final para confirmar estado `OK/WARN`.
+
+### Estatus por comando natural
+
+Con la skill `mcp-status-assistant`, cuando en Kiro escribas **"estatus"** o **"estado mcp"**, el agente puede mostrar en el chat:
+
+- servidores MCP configurados (`context7` y `engram`),
+- version de `node` y `npx`,
+- tipo de DB de Engram (SQLite) y tamano en disco,
+- estado final resumido: `OK`, `WARN` o `BLOQUEO`.
 
 ### Aviso diario de nueva version
 
