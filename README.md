@@ -134,6 +134,46 @@ Una vez que ya configuraste los agentes en Kiro, en cada proyecto conviene regis
 
 Nota: esto no es obligatorio para uso basico. El orquestador SDD ejecuta `/sdd-init` automaticamente si no detecta contexto, pero si cambio el proyecto (por ejemplo, nuevo test runner o nuevas dependencias) conviene re-ejecutarlo manualmente para mantener el contexto actualizado.
 
+## Actualizacion rapida
+
+Cuando salga una mejora de MCPKiroKit, podes actualizar en pocos pasos.
+
+### Opcion recomendada (online)
+
+```powershell
+iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1"
+```
+
+Esta opcion vuelve a sincronizar configuracion MCP, steering y skills sin romper lo que ya tenes.
+
+### Si ves errores viejos (cache), forzar update limpio
+
+```powershell
+$script = "$env:TEMP\install-mcp-kiro.ps1"
+Remove-Item $script -ErrorAction SilentlyContinue
+$ts = [int][double]::Parse((Get-Date -UFormat %s))
+$url = "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-mcp-kiro.ps1?nocache=$ts"
+iwr -UseBasicParsing -Headers @{ "Cache-Control"="no-cache"; "Pragma"="no-cache" } $url -OutFile $script -ErrorAction Stop
+powershell -ExecutionPolicy RemoteSigned -File $script
+```
+
+Este flujo evita ejecutar una copia vieja guardada en `%TEMP%` o cacheada por proxy.
+
+### Opcion manual (si ya tenes el paquete descargado)
+
+```powershell
+cd C:\ruta\al\proyecto\PACKAGE
+powershell -ExecutionPolicy RemoteSigned -File .\install-mcp-kiro.ps1
+```
+
+### Verificacion post-actualizacion
+
+```powershell
+powershell -ExecutionPolicy RemoteSigned -File .\verify-package.ps1
+```
+
+Si estas dentro de un proyecto, despues de actualizar conviene re-ejecutar `/sdd-init` y `skill-registry` para refrescar el contexto del agente.
+
 ## Desinstalacion
 
 Si en algun momento queres remover todo lo instalado por este paquete, segui estos pasos.
