@@ -91,6 +91,7 @@ PACKAGE/
 |  \- mcp-kiro-kit.json
 |- install-mcp-kiro.ps1
 |- install-online.ps1
+|- check-mcpkirokit-update.ps1
 |- verify-package.ps1
 \- README.md
 ```
@@ -123,6 +124,20 @@ Con la skill `kiro-update-assistant`, cuando en Kiro escribas algo como **"actua
 - comando de actualizacion online recomendado,
 - alternativa con cache-busting si detectas errores viejos,
 - y verificacion final para confirmar estado `OK/WARN`.
+
+### Aviso diario de nueva version
+
+MCPKiroKit instala un checker local en `~/.kiro/tools/check-mcpkirokit-update.ps1`.
+
+- Guarda estado diario en `~/.kiro/state/mcpkirokit-update-check.json`.
+- Solo avisa una vez por dia si detecta una version mas nueva.
+- En Kiro, la recomendacion es ejecutar este chequeo al inicio de la primera conversacion del dia.
+
+Chequeo manual:
+
+```powershell
+powershell -ExecutionPolicy RemoteSigned -File "$env:USERPROFILE\.kiro\tools\check-mcpkirokit-update.ps1"
+```
 
 ## Distribucion con Scoop bucket
 

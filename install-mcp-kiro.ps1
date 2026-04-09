@@ -3,6 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$MCPKiroKitVersion = "1.0.3"
 
 function Write-Info {
   param([string]$Message)
@@ -395,8 +396,17 @@ function Sync-KiroAssetsFromRepo {
     Expand-Archive -LiteralPath $zipPath -DestinationPath $extractPath -Force
     $repoRoot = Join-Path $extractPath "mcp-kiro-kit-main"
     $sourceKiroRoot = Join-Path $repoRoot ".kiro"
+    $sourceUpdateChecker = Join-Path $repoRoot "check-mcpkirokit-update.ps1"
+    $targetToolsDir = Join-Path $HomePath ".kiro/tools"
+    $targetUpdateChecker = Join-Path $targetToolsDir "check-mcpkirokit-update.ps1"
 
     Copy-KiroAssets -SourceKiroRoot $sourceKiroRoot -TargetRoot $HomePath -TargetLabel "usuario"
+
+    if (Test-Path -LiteralPath $sourceUpdateChecker) {
+      New-Item -ItemType Directory -Path $targetToolsDir -Force | Out-Null
+      Copy-Item -LiteralPath $sourceUpdateChecker -Destination $targetUpdateChecker -Force
+      Write-Info "Checker de actualizaciones instalado en $targetUpdateChecker"
+    }
 
     if (-not [string]::IsNullOrWhiteSpace($WorkspacePath) -and (Test-Path -LiteralPath $WorkspacePath)) {
       Copy-KiroAssets -SourceKiroRoot $sourceKiroRoot -TargetRoot $WorkspacePath -TargetLabel "workspace"
@@ -408,6 +418,41 @@ function Sync-KiroAssetsFromRepo {
     Write-WarnMsg "No se pudieron sincronizar skills/steering completos desde el repo: $($_.Exception.Message)"
     Write-WarnMsg "Se mantiene configuracion base local para no bloquear la instalacion."
     return $false
+  }
+}
+
+function Save-InstallMetadata {
+  param(
+    [Parameter(Mandatory = $true)][string]$HomePath,
+    [Parameter(Mandatory = $true)][string]$InstalledVersion
+  )
+
+  $metaPath = Join-Path $HomePath ".kiro/mcpkirokit-install.json"
+  $meta = [ordered]@{
+    installedVersion = $InstalledVersion
+    installedAt = (Get-Date).ToString("o")
+  }
+
+  $meta | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $metaPath -Encoding UTF8
+  Write-Info "Version instalada registrada en $metaPath"
+}
+
+function Invoke-DailyUpdateNotice {
+  param(
+    [Parameter(Mandatory = $true)][string]$HomePath,
+    [Parameter(Mandatory = $true)][string]$InstalledVersion
+  )
+
+  $checkerPath = Join-Path $HomePath ".kiro/tools/check-mcpkirokit-update.ps1"
+  if (-not (Test-Path -LiteralPath $checkerPath)) {
+    return
+  }
+
+  try {
+    & powershell -ExecutionPolicy RemoteSigned -File $checkerPath -InstalledVersion $InstalledVersion -QuietIfCheckedToday
+  }
+  catch {
+    Write-WarnMsg "No se pudo ejecutar el chequeo diario de actualizacion: $($_.Exception.Message)"
   }
 }
 
@@ -434,6 +479,10 @@ $assetsSynced = Sync-KiroAssetsFromRepo -HomePath $userHome -WorkspacePath $Work
 if (-not $assetsSynced) {
   Ensure-KiroBaseContent -HomePath $userHome
 }
+
+Save-InstallMetadata -HomePath $userHome -InstalledVersion $MCPKiroKitVersion
+Invoke-DailyUpdateNotice -HomePath $userHome -InstalledVersion $MCPKiroKitVersion
+
 $settingsFiles = @(
   (Join-Path $userHome ".kiro/settings/mcp.json")
 )

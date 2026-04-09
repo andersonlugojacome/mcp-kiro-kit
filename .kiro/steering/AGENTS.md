@@ -43,3 +43,8 @@ Guiar a Kiro para trabajar con alta confiabilidad tecnica, minimo consumo de tok
 - Configuracion reproducible para teammates nuevos.
 - Documentacion corta, verificable y sin ambiguedades.
 - Scripts con mensajes claros de error y recuperacion.
+
+## Actualizacion diaria (MCPKiroKit)
+- En la primera interaccion del dia, verificar si hay nueva version usando `~/.kiro/tools/check-mcpkirokit-update.ps1`.
+- Si hay update disponible, informar de forma corta y sugerir: `actualizame`.
+- No repetir alerta mas de una vez por dia (usar estado local en `~/.kiro/state/`).
