@@ -95,6 +95,26 @@ PACKAGE/
 \- README.md
 ```
 
+## Skills instaladas
+
+Estas son las skills incluidas y su funcion principal:
+
+| Skill | Para que sirve | Cuando usarla |
+| --- | --- | --- |
+| `sdd-init` | Inicializa el contexto SDD del proyecto (stack, convenciones y persistencia). | Al arrancar un proyecto nuevo o cuando cambia la base tecnica. |
+| `sdd-explore` | Explora ideas y alternativas antes de definir un cambio. | Cuando hay que investigar enfoque, alcance o riesgos. |
+| `sdd-propose` | Crea la propuesta de cambio (`proposal`) con objetivo y alcance. | Cuando ya hay claridad inicial y hay que formalizar el cambio. |
+| `sdd-spec` | Escribe especificaciones con requisitos y escenarios. | Cuando hay que definir comportamiento esperado de forma verificable. |
+| `sdd-design` | Define diseno tecnico y decisiones de arquitectura. | Cuando se necesita describir como implementar el cambio. |
+| `sdd-tasks` | Descompone el cambio en tareas concretas por fases. | Antes de implementar, para ejecutar con orden y trazabilidad. |
+| `sdd-apply` | Implementa tareas del cambio siguiendo specs y diseno. | Durante la ejecucion tecnica del cambio. |
+| `sdd-verify` | Verifica que la implementacion cumpla specs y tareas. | Al cerrar implementacion o en checkpoints de calidad. |
+| `sdd-archive` | Consolida y archiva un cambio SDD completado. | Al finalizar ciclo completo (proposal/spec/design/tasks/apply/verify). |
+| `skill-creator` | Crea nuevas skills siguiendo el formato oficial. | Cuando el equipo necesita automatizar un patron nuevo. |
+| `go-testing` | Aplica patrones de testing en Go (incluye Bubbletea/TUI). | Cuando se escriben pruebas Go o se aumenta cobertura. |
+
+Nota: la carpeta `_shared` contiene documentos de apoyo para estas skills y no se considera una skill ejecutable.
+
 ## Distribucion con Scoop bucket
 
 Tambien podes distribuir **MCPKiroKit** via Scoop sin pedir al usuario que clone este repo.
