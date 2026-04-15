@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$MCPKiroKitVersion = "1.0.5"
+$MCPKiroKitVersion = "1.0.6"
 
 function Write-Info {
   param([string]$Message)

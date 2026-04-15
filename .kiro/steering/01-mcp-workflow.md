@@ -7,6 +7,8 @@ inclusion: always
 ## Objetivo
 Tener Kiro operativo con MCP de forma segura, portable e idempotente.
 
+Este workflow se complementa con la politica de ejecucion en background definida en `./02-sdd-orchestrator-runtime.md`.
+
 ## Politica de Orquestacion Continua (obligatoria)
 1. En **cada consulta del usuario**, ejecutar primero una consulta en **Engram** para recuperar contexto previo relevante.
 2. Mantener un contador de consultas de usuario en la sesion (`mcp_query_count`).

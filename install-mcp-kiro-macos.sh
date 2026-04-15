@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-MCP_KIRO_KIT_VERSION="1.0.5"
+MCP_KIRO_KIT_VERSION="1.0.6"
 WORKSPACE_PATH="${1:-}"
 
 write_info() {

@@ -2,7 +2,7 @@
 
 > One command. Any agent. Any OS. The MCPKiroKit ecosystem -- configured and ready.
 
-**Version: 1.0.5**
+**Version: 1.0.6**
 
 Paquete listo para dejar tu entorno de Kiro funcionando en Windows 11 o macOS con una instalacion guiada por **un solo script**.
 
@@ -234,6 +234,10 @@ Una vez que ya configuraste los agentes en Kiro, en cada proyecto conviene regis
 | `skill-registry` | Escanea skills instaladas y convenciones del proyecto, y construye el registro. | Cuando agregues/borres skills o cambien convenciones relevantes del proyecto. |
 
 Nota: esto no es obligatorio para uso basico. El orquestador SDD ejecuta `/sdd-init` automaticamente si no detecta contexto, pero si cambio el proyecto (por ejemplo, nuevo test runner o nuevas dependencias) conviene re-ejecutarlo manualmente para mantener el contexto actualizado.
+
+Adicionalmente, el repo incluye politica de runtime para sesiones largas en background en `/.kiro/steering/02-sdd-orchestrator-runtime.md`.
+
+Para el dia a dia sin leer todo, usa el "Checklist Operativo Diario (10 segundos)" dentro de ese archivo.
 
 ## Politica de comportamiento del agente (documentado)
 
