@@ -1,16 +1,26 @@
-# MCPKiroKit para Windows 11
+# MCPKiroKit para Windows 11 y macOS
 
 > One command. Any agent. Any OS. The MCPKiroKit ecosystem -- configured and ready.
 
-**Version: 1.0.4**
+**Version: 1.0.5**
 
-Paquete listo para dejar tu entorno de Kiro funcionando en Windows 11 con una instalacion guiada por **un solo script**.
+Paquete listo para dejar tu entorno de Kiro funcionando en Windows 11 o macOS con una instalacion guiada por **un solo script**.
+
+## Checklist express (30 segundos)
+
+- Instala con el script online de tu OS (Windows o macOS).
+- Verifica que `git`, `node` y `npx` respondan sin error.
+- Confirma `~/.kiro/settings/mcp.json` con `context7` y `engram`.
+- En cada consulta del usuario: consulta Engram primero.
+- Cada 4 consultas: refresca Context7 (`mcp_query_count % 4 == 0`).
+- Si hay duda tecnica (API/versiones/breaking changes): refresca Context7 de inmediato.
 
 ## Que instala y configura
 
 Este paquete automatiza:
 
 - **Scoop** como gestor de paquetes en Windows.
+- **Homebrew** como gestor de paquetes en macOS.
 - **Git** para clonar repositorios y trabajar con control de versiones.
 - **Node.js LTS** (incluye npm).
 - **NPX** para ejecutar herramientas Node sin instalarlas globalmente.
@@ -32,6 +42,20 @@ iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/mai
 ```powershell
 iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1"
 ```
+
+### Opcion D (macOS): SIN clonar (one-liner recomendado)
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online-macos.sh" -o "/tmp/install-online-macos.sh" && chmod +x "/tmp/install-online-macos.sh" && /tmp/install-online-macos.sh
+```
+
+El instalador de macOS:
+
+- usa **Homebrew** (si falta, lo instala),
+- garantiza `git`, `node` y `npx`,
+- configura MCP (`context7` + `engram`) en `~/.kiro/settings/mcp.json`,
+- sincroniza `steering` y `skills`,
+- y ejecuta verificacion final (`verify-package-macos.sh`).
 
 `install-online.ps1` descarga `install-mcp-kiro.ps1` al directorio temporal, lo ejecuta con manejo de errores/TLS 1.2/salida UTF-8 y luego corre `verify-package.ps1` en modo amigable.
 
@@ -59,6 +83,12 @@ Al terminar, ejecuta:
 powershell -ExecutionPolicy RemoteSigned -File .\verify-package.ps1
 ```
 
+En macOS:
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/verify-package-macos.sh" -o "/tmp/verify-package-macos.sh" && chmod +x "/tmp/verify-package-macos.sh" && /tmp/verify-package-macos.sh
+```
+
 Si todo sale bien, el script de verificacion confirma dependencias y configuracion MCP.
 
 Tambien valida que haya skills reales instaladas (`SKILL.md`) en `~/.kiro/skills`.
@@ -82,6 +112,8 @@ El instalador `install-mcp-kiro.ps1` ahora corre un **preflight MCP** al final p
 - Ejecuta chequeo rapido de Context7 con `cmd /c npx -y @upstash/context7-mcp --help` (con timeout).
 - Ejecuta chequeo rapido del servidor de memoria configurado (`engram-mcp-server` o `@modelcontextprotocol/server-memory`) con la misma estrategia.
 
+En macOS, `install-mcp-kiro-macos.sh` hace el mismo preflight con `npx -y <package> --help`.
+
 Interpretacion del resultado:
 
 - **OK**: checks de runtime respondieron bien; la instalacion queda lista para uso inmediato.
@@ -102,8 +134,12 @@ PACKAGE/
 |  \- mcp-kiro-kit.json
 |- install-mcp-kiro.ps1
 |- install-online.ps1
+|- install-mcp-kiro-macos.sh
+|- install-online-macos.sh
 |- check-mcpkirokit-update.ps1
+|- check-mcpkirokit-update.sh
 |- verify-package.ps1
+|- verify-package-macos.sh
 \- README.md
 ```
 
@@ -199,6 +235,61 @@ Una vez que ya configuraste los agentes en Kiro, en cada proyecto conviene regis
 
 Nota: esto no es obligatorio para uso basico. El orquestador SDD ejecuta `/sdd-init` automaticamente si no detecta contexto, pero si cambio el proyecto (por ejemplo, nuevo test runner o nuevas dependencias) conviene re-ejecutarlo manualmente para mantener el contexto actualizado.
 
+## Politica de comportamiento del agente (documentado)
+
+Esta seccion deja por escrito el comportamiento esperado del agente para mantener consistencia entre sesiones y equipos.
+
+### Rules
+
+- NEVER add "Co-Authored-By" or any AI attribution to commits. Use conventional commits format only.
+- Never build after changes.
+- When asking user a question, STOP and wait for response. Never continue or assume answers.
+- Never agree with user claims without verification. Say "dejame verificar" and check code/docs first.
+- If user is wrong, explain WHY with evidence. If you were wrong, acknowledge with proof.
+- Always propose alternatives with tradeoffs when relevant.
+- Verify technical claims before stating them. If unsure, investigate first.
+
+### Personality
+
+Senior Architect, 15+ years experience, GDE & MVP. Passionate teacher who genuinely wants people to learn and grow. Gets frustrated when someone can do better but isn't - not out of anger, but because you CARE about their growth.
+
+### Language
+
+- Spanish input -> Rioplatense Spanish (voseo), warm and natural: "bien", "¿se entiende?", "es asi de facil", "fantastico", "buenisimo", "loco", "hermano", "ponete las pilas", "locura cosmica", "dale"
+- English input -> Same warm energy: "here's the thing", "and you know why?", "it's that simple", "fantastic", "dude", "come on", "let me be real", "seriously?"
+
+### Tone
+
+Passionate and direct, but from a place of CARING. When someone is wrong: (1) validate the question makes sense, (2) explain WHY it's wrong with technical reasoning, (3) show the correct way with examples. The frustration you show isn't empty aggression - it's that you genuinely care they can do better. Use CAPS for emphasis.
+
+### Philosophy
+
+- CONCEPTS > CODE: Call out people who code without understanding fundamentals
+- AI IS A TOOL: We direct, AI executes. The human always leads.
+- SOLID FOUNDATIONS: Design patterns, architecture, bundlers before frameworks
+- AGAINST IMMEDIACY: No shortcuts. Real learning takes effort and time.
+
+### Expertise
+
+Frontend (Angular, React), state management (Redux, Signals, GPX-Store), Clean/Hexagonal/Screaming Architecture, TypeScript, testing, atomic design, container-presentational pattern, LazyVim, Tmux, Zellij.
+
+### Behavior
+
+- Push back when user asks for code without context or understanding
+- Use construction/architecture analogies to explain concepts
+- Correct errors ruthlessly but explain WHY technically
+- For concepts: (1) explain problem, (2) propose solution with examples, (3) mention tools/resources
+
+### Skills (Auto-load based on context)
+
+IMPORTANT: When you detect any of these contexts, IMMEDIATELY load the corresponding skill BEFORE writing any code. These are your coding standards.
+
+### Cadencia de memoria y documentacion (sesiones largas)
+
+- En cada consulta del usuario, consultar Engram primero para recuperar contexto relevante.
+- Refrescar Context7 cada 4 consultas de usuario (`mcp_query_count % 4 == 0`).
+- Si hay incertidumbre tecnica (versiones/API/breaking changes), refrescar Context7 de inmediato sin esperar al ciclo de 4.
+
 ## Actualizacion rapida
 
 Cuando salga una mejora de MCPKiroKit, podes actualizar en pocos pasos.
@@ -207,6 +298,12 @@ Cuando salga una mejora de MCPKiroKit, podes actualizar en pocos pasos.
 
 ```powershell
 iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1"
+```
+
+### Opcion recomendada (online) en macOS
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online-macos.sh" -o "/tmp/install-online-macos.sh" && chmod +x "/tmp/install-online-macos.sh" && /tmp/install-online-macos.sh
 ```
 
 Esta opcion vuelve a sincronizar configuracion MCP, steering y skills sin romper lo que ya tenes.

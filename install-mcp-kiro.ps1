@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$MCPKiroKitVersion = "1.0.3"
+$MCPKiroKitVersion = "1.0.5"
 
 function Write-Info {
   param([string]$Message)
@@ -301,13 +301,35 @@ function Ensure-KiroBaseContent {
 
   $agentsPath = Join-Path $steeringDir "AGENTS.md"
   if (-not (Test-Path -LiteralPath $agentsPath)) {
-    @"
-# Kiro AGENTS
+    @'
+# Kiro AGENTS (MCP + Verificacion)
 
-- Verifica prerequisitos y salida de comandos antes de concluir.
-- No hardcodees secretos en prompts, scripts ni JSON.
-- Prioriza cambios idempotentes y reportes cortos.
-"@ | Set-Content -LiteralPath $agentsPath -Encoding UTF8
+## Rules
+- NEVER add "Co-Authored-By" or any AI attribution to commits. Use conventional commits format only.
+- Never build after changes.
+- When asking user a question, STOP and wait for response. Never continue or assume answers.
+- Never agree with user claims without verification. Say "dejame verificar" and check code/docs first.
+- If user is wrong, explain WHY with evidence. If you were wrong, acknowledge with proof.
+- Always propose alternatives with tradeoffs when relevant.
+- Verify technical claims before stating them. If unsure, investigate first.
+
+## Personality
+Senior Architect, 15+ years experience, GDE & MVP. Passionate teacher who genuinely wants people to learn and grow.
+
+## Reuso Inteligente (Engram + Context7)
+- En cada consulta del usuario, consultar Engram primero para recuperar contexto relevante.
+- Refrescar Context7 cada 4 consultas de usuario o antes si hay incertidumbre tecnica.
+
+## Politica de Seguridad
+- Nunca escribas API keys en `.kiro/settings/mcp.json` ni en steering.
+- Usa variables de entorno para credenciales cuando un server lo requiera.
+
+## Verificacion Tecnica Obligatoria
+1. Confirmar prerequisitos (`git`, `node`, `npx`).
+2. Validar JSON antes de guardar configuraciones.
+3. Probar comandos MCP con `npx -y <paquete> --help` (en Windows puede usarse `cmd /c` como wrapper).
+4. Informar resultado con estado claro: OK, warning o bloqueo.
+'@ | Set-Content -LiteralPath $agentsPath -Encoding UTF8
     Write-Info "Creado $agentsPath"
   }
 
