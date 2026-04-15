@@ -54,8 +54,11 @@ El instalador de macOS:
 - usa **Homebrew** (si falta, lo instala),
 - garantiza `git`, `node` y `npx`,
 - configura MCP (`context7` + `engram`) en `~/.kiro/settings/mcp.json`,
+- deja `power-postman-postman` fuera por defecto en macOS,
 - sincroniza `steering` y `skills`,
 - y ejecuta verificacion final (`verify-package-macos.sh`).
+
+Si queres activarlo manualmente en macOS, agrega el servidor `power-postman-postman` dentro de `mcpServers` en `~/.kiro/settings/mcp.json` y reinicia Kiro.
 
 `install-online.ps1` descarga `install-mcp-kiro.ps1` al directorio temporal, lo ejecuta con manejo de errores/TLS 1.2/salida UTF-8 y luego corre `verify-package.ps1` en modo amigable.
 

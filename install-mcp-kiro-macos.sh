@@ -117,6 +117,10 @@ desired = {
     }
 }
 
+mcp_servers = existing.get("mcpServers")
+if isinstance(mcp_servers, dict):
+    mcp_servers.pop("power-postman-postman", None)
+
 def merge(base, incoming):
     for key, incoming_value in incoming.items():
         if key not in base:
@@ -142,6 +146,7 @@ ensure_kiro_mcp_settings() {
   merge_mcp_json "$settings_file"
   write_info "MCP configurado en $settings_file"
   write_info "Servidores MCP declarados: context7, engram"
+  write_info "macOS: power-postman-postman queda fuera por defecto (activacion manual opcional)."
 }
 
 ensure_kiro_base_content() {
