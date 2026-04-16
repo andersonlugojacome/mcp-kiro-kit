@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-MCP_KIRO_KIT_VERSION="1.0.7"
+MCP_KIRO_KIT_VERSION="1.0.10"
 WORKSPACE_PATH="${1:-}"
 
 write_info() {
@@ -137,6 +137,99 @@ settings_path.write_text(json.dumps(existing, indent=2, ensure_ascii=True) + "\n
 PY
 }
 
+apply_memory_fallback_to_settings() {
+  local settings_file="$1"
+  python3 - "$settings_file" <<'PY'
+import json
+import pathlib
+import sys
+
+settings_path = pathlib.Path(sys.argv[1])
+existing = {}
+if settings_path.exists():
+    try:
+        existing = json.loads(settings_path.read_text(encoding="utf-8"))
+        if not isinstance(existing, dict):
+            existing = {}
+    except Exception:
+        existing = {}
+
+mcp_servers = existing.get("mcpServers")
+if not isinstance(mcp_servers, dict):
+    mcp_servers = {}
+    existing["mcpServers"] = mcp_servers
+
+mcp_servers.pop("engram", None)
+if "memory" not in mcp_servers:
+    mcp_servers["memory"] = {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-memory"],
+    }
+
+settings_path.parent.mkdir(parents=True, exist_ok=True)
+settings_path.write_text(json.dumps(existing, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
+PY
+}
+
+probe_engram_server() {
+  local probe_status
+  probe_status="$(python3 <<'PY'
+import subprocess
+
+patterns = [
+    "better_sqlite3",
+    "better-sqlite3",
+    "could not locate the bindings file",
+    "bindings",
+    "node-v",
+    "mcp error -32000",
+]
+
+try:
+    proc = subprocess.run(
+        ["npx", "-y", "engram-mcp-server", "--help"],
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+except subprocess.TimeoutExpired:
+    print("timeout")
+    raise SystemExit(0)
+except Exception:
+    print("failed")
+    raise SystemExit(0)
+
+output = ((proc.stdout or "") + "\n" + (proc.stderr or "")).lower()
+if proc.returncode == 0:
+    print("ok")
+elif any(pattern in output for pattern in patterns):
+    print("native")
+else:
+    print("failed")
+PY
+)"
+
+  case "$probe_status" in
+  ok)
+    write_info "Probe Engram: OK"
+    return 0
+    ;;
+  native)
+    write_warn "Probe Engram: WARN (falla nativa detectada)"
+    return 1
+    ;;
+  timeout)
+    write_warn "Probe Engram: WARN (timeout/no arranca)"
+    return 1
+    ;;
+  *)
+    write_warn "Probe Engram: WARN"
+    return 1
+    ;;
+  esac
+}
+
 ensure_kiro_mcp_settings() {
   local root_path="$1"
   local settings_dir="$root_path/.kiro/settings"
@@ -147,6 +240,18 @@ ensure_kiro_mcp_settings() {
   write_info "MCP configurado en $settings_file"
   write_info "Servidores MCP declarados: context7, engram"
   write_info "macOS: power-postman-postman queda fuera por defecto (activacion manual opcional)."
+}
+
+ensure_memory_fallback_if_needed() {
+  local settings_file="$1"
+
+  if probe_engram_server; then
+    write_info "Engram activo (sin fallback)."
+    return
+  fi
+
+  apply_memory_fallback_to_settings "$settings_file"
+  write_warn "Engram no compatible en este entorno; se aplicó fallback automático a memory"
 }
 
 ensure_kiro_base_content() {
@@ -469,6 +574,7 @@ main() {
 
   local user_home="$HOME"
   ensure_kiro_mcp_settings "$user_home"
+  ensure_memory_fallback_if_needed "$user_home/.kiro/settings/mcp.json"
 
   if [[ -n "$WORKSPACE_PATH" ]]; then
     if [[ -d "$WORKSPACE_PATH" ]]; then

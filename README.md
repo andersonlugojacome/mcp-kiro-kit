@@ -2,7 +2,7 @@
 
 > One command. Any agent. Any OS. The MCPKiroKit ecosystem -- configured and ready.
 
-**Version: 1.0.7**
+**Version: 1.0.10**
 
 Paquete listo para dejar tu entorno de Kiro funcionando en Windows 11 o macOS con una instalacion guiada por **un solo script**.
 
@@ -54,6 +54,7 @@ El instalador de macOS:
 - usa **Homebrew** (si falta, lo instala),
 - garantiza `git`, `node` y `npx`,
 - configura MCP (`context7` + `engram`) en `~/.kiro/settings/mcp.json`,
+- hace probe automatico de `engram` y, si no arranca o falla por bindings nativos (`better-sqlite3`), aplica fallback automatico a `memory` sin pasos manuales,
 - deja `power-postman-postman` fuera por defecto en macOS,
 - sincroniza `steering` y `skills`,
 - y ejecuta verificacion final (`verify-package-macos.sh`).
@@ -116,11 +117,12 @@ El instalador `install-mcp-kiro.ps1` ahora corre un **preflight MCP** al final p
 - Ejecuta chequeo rapido del servidor de memoria configurado (`engram-mcp-server` o `@modelcontextprotocol/server-memory`) con la misma estrategia.
 
 En macOS, `install-mcp-kiro-macos.sh` hace el mismo preflight con `npx -y <package> --help`.
+Ademas, en macOS se ejecuta un probe dedicado de Engram y, si no es compatible con el entorno, el instalador ajusta `~/.kiro/settings/mcp.json` para usar `@modelcontextprotocol/server-memory` automaticamente.
 
 Interpretacion del resultado:
 
 - **OK**: checks de runtime respondieron bien; la instalacion queda lista para uso inmediato.
-- **WARN**: uno o mas checks fallaron o expiraron, pero la instalacion **no se corta**. Segui las sugerencias en consola (reiniciar terminal, revisar proxy/cert corporativo, o usar fallback `@modelcontextprotocol/server-memory`).
+- **WARN**: uno o mas checks fallaron o expiraron, pero la instalacion **no se corta**. En macOS, si Engram no levanta por compatibilidad nativa, el fallback a `@modelcontextprotocol/server-memory` se aplica automaticamente.
 
 ## Que es `npx` (explicado simple)
 
@@ -211,6 +213,8 @@ scoop install mcp-kiro-kit
 Importante: esta opcion requiere un repositorio de bucket separado (por ejemplo `scoop-bucket`) con el manifiesto `mcp-kiro-kit.json`.
 
 ## Cambiar Engram por fallback `@modelcontextprotocol/server-memory`
+
+En macOS, el instalador ya hace este cambio automaticamente cuando detecta que Engram no es compatible (por ejemplo, error de bindings nativos).
 
 Si queres usar memoria local fallback en lugar de Engram, edita la configuracion MCP que deja el instalador (normalmente en `.kiro/mcp.json` o el archivo equivalente de Kiro) y cambia el servidor de memoria.
 
