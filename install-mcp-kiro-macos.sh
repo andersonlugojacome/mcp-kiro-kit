@@ -2,8 +2,11 @@
 
 set -euo pipefail
 
-MCP_KIRO_KIT_VERSION="1.0.10"
+MCP_KIRO_KIT_VERSION="1.0.11"
 WORKSPACE_PATH="${1:-}"
+ENGRAM_PACKAGE_CANONICAL="@gentleman-programming/engram-mcp-server"
+ENGRAM_DB_PRIMARY_DIR="$HOME/.engram"
+ENGRAM_BACKUP_ROOT="$HOME/.kiro/backups/engram"
 
 write_info() {
   printf '[INFO] %s\n' "$1"
@@ -112,7 +115,7 @@ desired = {
         },
         "engram": {
             "command": "npx",
-            "args": ["-y", "engram-mcp-server"],
+            "args": ["-y", "@gentleman-programming/engram-mcp-server"],
         },
     }
 }
@@ -172,9 +175,11 @@ PY
 }
 
 probe_engram_server() {
+  local package_name="$1"
   local probe_status
-  probe_status="$(python3 <<'PY'
+  probe_status="$(python3 - "$package_name" <<'PY'
 import subprocess
+import sys
 
 patterns = [
     "better_sqlite3",
@@ -186,8 +191,9 @@ patterns = [
 ]
 
 try:
+    package_name = sys.argv[1]
     proc = subprocess.run(
-        ["npx", "-y", "engram-mcp-server", "--help"],
+        ["npx", "-y", package_name, "--help"],
         capture_output=True,
         text=True,
         timeout=30,
@@ -242,16 +248,77 @@ ensure_kiro_mcp_settings() {
   write_info "macOS: power-postman-postman queda fuera por defecto (activacion manual opcional)."
 }
 
+detect_existing_engram_db_dir() {
+  python3 - "$HOME" <<'PY'
+import pathlib
+import sys
+
+home = pathlib.Path(sys.argv[1])
+candidates = [
+    home / ".engram",
+    home / ".kiro" / "engram",
+    home / ".config" / "engram",
+]
+
+for candidate in candidates:
+    if not candidate.exists() or not candidate.is_dir():
+        continue
+    if any((candidate / name).exists() for name in ("engram.db", "engram.db-wal", "engram.db-shm")):
+        print(candidate)
+        raise SystemExit(0)
+
+print("")
+PY
+}
+
+backup_engram_db_dir() {
+  local source_dir="$1"
+  local backup_stamp="$2"
+  local backup_dir="$ENGRAM_BACKUP_ROOT/$backup_stamp"
+
+  mkdir -p "$backup_dir"
+  cp -R "$source_dir/." "$backup_dir/"
+  write_info "Backup Engram creado: $backup_dir"
+  echo "$backup_dir"
+}
+
+prepare_engram_db_for_canonical() {
+  local source_dir="$1"
+
+  if [[ -z "$source_dir" ]]; then
+    write_info "No se detecto DB previa de Engram. Se continuara con DB limpia en $ENGRAM_DB_PRIMARY_DIR"
+    return
+  fi
+
+  if [[ "$source_dir" == "$ENGRAM_DB_PRIMARY_DIR" ]]; then
+    write_info "DB Engram detectada y reutilizada in-place: $source_dir"
+    return
+  fi
+
+  mkdir -p "$ENGRAM_DB_PRIMARY_DIR"
+  cp -R "$source_dir/." "$ENGRAM_DB_PRIMARY_DIR/"
+  write_info "DB Engram migrada para linea canonica: $source_dir -> $ENGRAM_DB_PRIMARY_DIR"
+}
+
 ensure_memory_fallback_if_needed() {
   local settings_file="$1"
+  local backup_dir="$2"
+  local db_source_dir="$3"
 
-  if probe_engram_server; then
+  if probe_engram_server "$ENGRAM_PACKAGE_CANONICAL"; then
     write_info "Engram activo (sin fallback)."
     return
   fi
 
   apply_memory_fallback_to_settings "$settings_file"
-  write_warn "Engram no compatible en este entorno; se aplicó fallback automático a memory"
+  write_warn "Engram no compatible en este entorno; se aplico fallback automatico a memory"
+  if [[ -n "$backup_dir" ]]; then
+    write_warn "Modo degradado: backup seguro conservado en $backup_dir"
+    write_warn "Restauracion sugerida: cp -R \"$backup_dir/.\" \"$ENGRAM_DB_PRIMARY_DIR/\""
+    if [[ -n "$db_source_dir" && "$db_source_dir" != "$ENGRAM_DB_PRIMARY_DIR" ]]; then
+      write_warn "Tambien podes restaurar al path legado original: cp -R \"$backup_dir/.\" \"$db_source_dir/\""
+    fi
+  fi
 }
 
 ensure_kiro_base_content() {
@@ -365,7 +432,7 @@ sync_kiro_assets_from_repo() {
   local zip_path="$temp_root/mcp-kiro-kit-main.zip"
   local extract_path="$temp_root/extracted"
 
-  trap 'rm -rf "$temp_root"' RETURN
+  trap 'if [[ -n "${temp_root:-}" ]]; then rm -rf "$temp_root"; fi; trap - RETURN' RETURN
 
   write_info "Descargando assets de steering/skills desde el repositorio..."
   if ! curl -fsSL "$zip_url" -o "$zip_path"; then
@@ -447,7 +514,7 @@ import json
 import pathlib
 import sys
 
-result = "engram-mcp-server"
+result = "@gentleman-programming/engram-mcp-server"
 
 for file_path in sys.argv[1:]:
     path = pathlib.Path(file_path)
@@ -468,8 +535,12 @@ for file_path in sys.argv[1:]:
         if not isinstance(args, list):
             continue
 
+        if "@gentleman-programming/engram-mcp-server" in args:
+            print("@gentleman-programming/engram-mcp-server")
+            raise SystemExit(0)
+
         if "engram-mcp-server" in args:
-            print("engram-mcp-server")
+            print("@gentleman-programming/engram-mcp-server")
             raise SystemExit(0)
 
         if "@modelcontextprotocol/server-memory" in args:
@@ -573,8 +644,20 @@ main() {
   ensure_npx
 
   local user_home="$HOME"
+  local db_source_dir
+  local backup_dir=""
+  local backup_stamp
+
+  backup_stamp="$(date +%Y%m%d-%H%M%S)"
+  db_source_dir="$(detect_existing_engram_db_dir)"
+  if [[ -n "$db_source_dir" ]]; then
+    write_info "DB Engram detectada: $db_source_dir"
+    backup_dir="$(backup_engram_db_dir "$db_source_dir" "$backup_stamp")"
+  fi
+  prepare_engram_db_for_canonical "$db_source_dir"
+
   ensure_kiro_mcp_settings "$user_home"
-  ensure_memory_fallback_if_needed "$user_home/.kiro/settings/mcp.json"
+  ensure_memory_fallback_if_needed "$user_home/.kiro/settings/mcp.json" "$backup_dir" "$db_source_dir"
 
   if [[ -n "$WORKSPACE_PATH" ]]; then
     if [[ -d "$WORKSPACE_PATH" ]]; then
@@ -594,7 +677,7 @@ main() {
   invoke_daily_update_notice "$user_home" "$MCP_KIRO_KIT_VERSION"
 
   local user_settings="$user_home/.kiro/settings/mcp.json"
-  local memory_server_package="engram-mcp-server"
+  local memory_server_package="$ENGRAM_PACKAGE_CANONICAL"
   if [[ -n "$WORKSPACE_PATH" ]]; then
     memory_server_package="$(get_memory_server_package "$user_settings" "$WORKSPACE_PATH/.kiro/settings/mcp.json")"
   else

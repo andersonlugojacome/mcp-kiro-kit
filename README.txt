@@ -14,11 +14,11 @@ PAQUETE MCP PARA KIRO (WINDOWS, MODO USUARIO LOCAL)
    - Confirma que existan `context7` y `engram`
 
 Fallback de Engram:
-- Si `engram-mcp-server` no funciona en tu entorno, cambia en `~/.kiro/settings/mcp.json`
+- Si `@gentleman-programming/engram-mcp-server` no funciona en tu entorno, cambia en `~/.kiro/settings/mcp.json`
   el paquete de `engram` a `@modelcontextprotocol/server-memory`.
 
 Ejemplo de cambio de args de engram:
-- De: `"args": ["/c", "npx", "-y", "engram-mcp-server"]`
+- De: `"args": ["/c", "npx", "-y", "@gentleman-programming/engram-mcp-server"]`
 - A:  `"args": ["/c", "npx", "-y", "@modelcontextprotocol/server-memory"]`
 
 Que es `npx` y por que ayuda:

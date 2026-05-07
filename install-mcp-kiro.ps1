@@ -3,7 +3,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$MCPKiroKitVersion = "1.0.10"
+$MCPKiroKitVersion = "1.0.11"
+$EngramPackageCanonical = "@gentleman-programming/engram-mcp-server"
 
 function Write-Info {
   param([string]$Message)
@@ -98,8 +99,12 @@ function Get-MemoryServerPackage {
         }
 
         foreach ($arg in @($server.args)) {
+          if ($arg -eq "@gentleman-programming/engram-mcp-server") {
+            return "@gentleman-programming/engram-mcp-server"
+          }
+
           if ($arg -eq "engram-mcp-server") {
-            return "engram-mcp-server"
+            return "@gentleman-programming/engram-mcp-server"
           }
 
           if ($arg -eq "@modelcontextprotocol/server-memory") {
@@ -113,7 +118,159 @@ function Get-MemoryServerPackage {
     }
   }
 
-  return "engram-mcp-server"
+  return "@gentleman-programming/engram-mcp-server"
+}
+
+function Get-EngramDbPaths {
+  param([string]$HomePath)
+
+  $primaryDir = Join-Path $HomePath ".engram"
+  $candidates = @(
+    $primaryDir,
+    (Join-Path $HomePath ".kiro/engram"),
+    (Join-Path $HomePath ".config/engram")
+  )
+
+  $detected = $null
+  foreach ($candidate in $candidates) {
+    if (-not (Test-Path -LiteralPath $candidate -PathType Container)) {
+      continue
+    }
+
+    $dbFile = Join-Path $candidate "engram.db"
+    $walFile = Join-Path $candidate "engram.db-wal"
+    $shmFile = Join-Path $candidate "engram.db-shm"
+    if ((Test-Path -LiteralPath $dbFile) -or (Test-Path -LiteralPath $walFile) -or (Test-Path -LiteralPath $shmFile)) {
+      $detected = $candidate
+      break
+    }
+  }
+
+  return [ordered]@{
+    PrimaryDir = $primaryDir
+    DetectedDir = $detected
+  }
+}
+
+function Backup-EngramDb {
+  param(
+    [Parameter(Mandatory = $true)][string]$SourceDir,
+    [Parameter(Mandatory = $true)][string]$HomePath
+  )
+
+  $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+  $backupRoot = Join-Path $HomePath ".kiro/backups/engram"
+  $backupDir = Join-Path $backupRoot $stamp
+  New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+  Copy-Item -Path (Join-Path $SourceDir "*") -Destination $backupDir -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Info "Backup Engram creado: $backupDir"
+  return $backupDir
+}
+
+function Prepare-EngramDbForCanonical {
+  param(
+    [string]$DetectedDir,
+    [Parameter(Mandatory = $true)][string]$PrimaryDir
+  )
+
+  if ([string]::IsNullOrWhiteSpace($DetectedDir)) {
+    Write-Info "No se detecto DB previa de Engram. Se continuara con DB limpia en $PrimaryDir"
+    return
+  }
+
+  if ($DetectedDir -eq $PrimaryDir) {
+    Write-Info "DB Engram detectada y reutilizada in-place: $DetectedDir"
+    return
+  }
+
+  New-Item -ItemType Directory -Path $PrimaryDir -Force | Out-Null
+  Copy-Item -Path (Join-Path $DetectedDir "*") -Destination $PrimaryDir -Recurse -Force -ErrorAction SilentlyContinue
+  Write-Info "DB Engram migrada para linea canonica: $DetectedDir -> $PrimaryDir"
+}
+
+function Test-EngramServer {
+  param([Parameter(Mandatory = $true)][string]$PackageName)
+
+  $job = Start-Job -ScriptBlock {
+    param($InnerPackageName)
+    $ErrorActionPreference = "Stop"
+    & cmd /c "npx -y $InnerPackageName --help"
+    if ($LASTEXITCODE -ne 0) {
+      throw "El proceso devolvio codigo $LASTEXITCODE"
+    }
+  } -ArgumentList $PackageName
+
+  try {
+    $completed = Wait-Job -Job $job -Timeout 30
+    if (-not $completed) {
+      Stop-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
+      return $false
+    }
+
+    if ($job.State -eq "Failed") {
+      return $false
+    }
+
+    Receive-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
+    return $true
+  }
+  finally {
+    Remove-Job -Job $job -Force -ErrorAction SilentlyContinue | Out-Null
+  }
+}
+
+function Apply-MemoryFallbackIfNeeded {
+  param(
+    [Parameter(Mandatory = $true)][string]$SettingsFile,
+    [string]$BackupDir,
+    [string]$DetectedDir,
+    [Parameter(Mandatory = $true)][string]$PrimaryDir
+  )
+
+  if (Test-EngramServer -PackageName $EngramPackageCanonical) {
+    Write-Info "Engram activo (sin fallback)."
+    return
+  }
+
+  $existing = @{}
+  if (Test-Path -LiteralPath $SettingsFile) {
+    try {
+      $raw = Get-Content -LiteralPath $SettingsFile -Raw
+      if (-not [string]::IsNullOrWhiteSpace($raw)) {
+        $parsed = $raw | ConvertFrom-Json -AsHashtable
+        if ($parsed -is [hashtable]) {
+          $existing = $parsed
+        }
+      }
+    }
+    catch {
+      $existing = @{}
+    }
+  }
+
+  if ($null -eq $existing["mcpServers"] -or -not ($existing["mcpServers"] -is [hashtable])) {
+    $existing["mcpServers"] = @{}
+  }
+
+  $existing["mcpServers"].Remove("engram") | Out-Null
+  if ($null -eq $existing["mcpServers"]["memory"]) {
+    $existing["mcpServers"]["memory"] = @{
+      command = "cmd"
+      args = @("/c", "npx", "-y", "@modelcontextprotocol/server-memory")
+    }
+  }
+
+  $json = $existing | ConvertTo-Json -Depth 20
+  Set-Content -LiteralPath $SettingsFile -Value $json -Encoding UTF8
+
+  Write-WarnMsg "Engram no compatible en este entorno; se aplico fallback automatico a memory"
+  if (-not [string]::IsNullOrWhiteSpace($BackupDir)) {
+    Write-WarnMsg "Modo degradado: backup seguro conservado en $BackupDir"
+    Write-WarnMsg "Restauracion sugerida: Copy-Item '$BackupDir\*' '$PrimaryDir' -Recurse -Force"
+    if (-not [string]::IsNullOrWhiteSpace($DetectedDir) -and $DetectedDir -ne $PrimaryDir) {
+      Write-WarnMsg "Tambien podes restaurar al path legado: Copy-Item '$BackupDir\*' '$DetectedDir' -Recurse -Force"
+    }
+  }
 }
 
 function Invoke-PreflightNpxPackage {
@@ -263,7 +420,7 @@ function Ensure-KiroMcpSettings {
       }
       engram = @{
         command = "cmd"
-        args = @("/c", "npx", "-y", "engram-mcp-server")
+        args = @("/c", "npx", "-y", "@gentleman-programming/engram-mcp-server")
       }
     }
   }
@@ -505,7 +662,16 @@ Ensure-ScoopPackage -CommandName "node" -PackageName "nodejs-lts"
 Ensure-Npx
 
 $userHome = [Environment]::GetFolderPath("UserProfile")
+$dbPaths = Get-EngramDbPaths -HomePath $userHome
+$backupDir = $null
+if (-not [string]::IsNullOrWhiteSpace($dbPaths.DetectedDir)) {
+  Write-Info "DB Engram detectada: $($dbPaths.DetectedDir)"
+  $backupDir = Backup-EngramDb -SourceDir $dbPaths.DetectedDir -HomePath $userHome
+}
+Prepare-EngramDbForCanonical -DetectedDir $dbPaths.DetectedDir -PrimaryDir $dbPaths.PrimaryDir
+
 Ensure-KiroMcpSettings -RootPath $userHome
+Apply-MemoryFallbackIfNeeded -SettingsFile (Join-Path $userHome ".kiro/settings/mcp.json") -BackupDir $backupDir -DetectedDir $dbPaths.DetectedDir -PrimaryDir $dbPaths.PrimaryDir
 
 if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
   if (Test-Path -LiteralPath $WorkspacePath) {

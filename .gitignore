@@ -1,2 +1,5 @@
 .DS_Store
 **/.DS_Store
+
+# Engram AI agent memory
+.engram/

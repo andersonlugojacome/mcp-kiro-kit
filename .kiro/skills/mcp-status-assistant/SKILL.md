@@ -28,9 +28,9 @@ Entregar en el chat un resumen tecnico y claro del estado MCP local.
 3. Estado de runtime MCP:
    - `node -v`
    - `npx -v`
-   - chequeo rapido:
-     - `cmd /c npx -y @upstash/context7-mcp --help`
-     - `cmd /c npx -y engram-mcp-server --help`
+    - chequeo rapido:
+      - `cmd /c npx -y @upstash/context7-mcp --help`
+      - `cmd /c npx -y @gentleman-programming/engram-mcp-server --help`
 
 ## Formato de respuesta
 

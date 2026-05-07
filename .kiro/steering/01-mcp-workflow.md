@@ -20,19 +20,25 @@ Este workflow se complementa con la politica de ejecucion en background definida
 1. Verificar base del entorno: `git`, `node`, `npx` disponibles.
 2. Validar conectividad minima (internet y resolucion npm).
 3. Confirmar `~/.kiro/settings/mcp.json` con servidores `context7` y `engram`.
-4. Probar cada server con `npx -y <package> --help` (en Windows puede usarse `cmd /c` como wrapper) para detectar fallos temprano.
-5. Reiniciar Kiro para levantar configuracion nueva.
-6. Ejecutar una consulta de humo: docs en Context7 + registro en Engram.
-7. Antes de iniciar tareas nuevas, revisar si ya existe solucion previa en Engram y reutilizarla.
-8. Durante sesiones largas, aplicar ciclo continuo: **Engram en cada consulta + Context7 cada 4 consultas**.
+4. Antes de actualizar Engram, detectar DB existente y generar backup versionado.
+5. Intentar reutilizacion/migracion de DB hacia `~/.engram` para continuidad de memoria.
+6. Probar cada server con `npx -y <package> --help` (en Windows puede usarse `cmd /c` como wrapper) para detectar fallos temprano.
+7. Si falla el arranque de Engram canonico, conservar backup, pasar a `@modelcontextprotocol/server-memory` y dejar instrucciones de restauracion.
+8. Reiniciar Kiro para levantar configuracion nueva.
+9. Ejecutar una consulta de humo: docs en Context7 + registro en Engram.
+10. Antes de iniciar tareas nuevas, revisar si ya existe solucion previa en Engram y reutilizarla.
+11. Durante sesiones largas, aplicar ciclo continuo: **Engram en cada consulta + Context7 cada 4 consultas**.
 
 ## Buenas Practicas
 - Mantener JSON limpio y valido, sin comentarios.
 - Evitar rutas absolutas de una sola maquina en skills y steering.
 - No persistir secretos en archivos de equipo.
-- Si `engram-mcp-server` falla, usar fallback `@modelcontextprotocol/server-memory`.
+- Usar linea canonica `@gentleman-programming/engram-mcp-server`.
+- Si Engram falla, usar fallback `@modelcontextprotocol/server-memory` sin borrar backup de DB.
 - Si Context7 no responde, continuar con contexto local + Engram y reintentar en el siguiente checkpoint de 4 consultas.
 - En respuestas largas, incluir un bloque corto de "fuente usada" para dejar trazabilidad de cuando se consulto Context7.
+- Para upstream/fuente canonica de Engram, referenciar `https://github.com/Gentleman-Programming/engram`.
+- Para tags/releases de Engram, mantener notacion con prefijo `v` (`vX.Y.Z`).
 
 ## Troubleshooting Rapido
 - `npx` falla: reinstalar/validar `nodejs-lts` y abrir nueva terminal.

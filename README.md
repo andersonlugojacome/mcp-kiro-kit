@@ -2,7 +2,7 @@
 
 > One command. Any agent. Any OS. The MCPKiroKit ecosystem -- configured and ready.
 
-**Version: 1.0.10**
+**Version: v1.0.11**
 
 Paquete listo para dejar tu entorno de Kiro funcionando en Windows 11 o macOS con una instalacion guiada por **un solo script**.
 
@@ -26,6 +26,19 @@ Este paquete automatiza:
 - **NPX** para ejecutar herramientas Node sin instalarlas globalmente.
 - **Configuracion MCP para Kiro** con servidores de **Context7** y **Engram**.
 - Sincronizacion de **steering** y **skills** oficiales del repo a `~/.kiro` para que no quede vacio.
+
+## Fuente canonica de Engram
+
+- Repositorio canonico de referencia: `https://github.com/Gentleman-Programming/engram`.
+- Cuando se documenten tags o releases de Engram, usar formato con prefijo `v` (por ejemplo, `v1.15.9`).
+
+## Hardening de actualizacion Engram (sin perder memoria)
+
+- El instalador usa como linea canonica `@gentleman-programming/engram-mcp-server`.
+- Antes de tocar configuracion MCP, detecta DB existente de Engram en paths conocidos (`~/.engram`, `~/.kiro/engram`, `~/.config/engram`).
+- Si encuentra DB (`engram.db` y/o `engram.db-wal`/`engram.db-shm`), crea backup versionado en `~/.kiro/backups/engram/<yyyyMMdd-HHmmss>`.
+- Prioriza reutilizacion de DB in-place. Si detecta DB en path legado, la migra a `~/.engram`.
+- Si el arranque de la linea canonica falla, mantiene backup seguro, cambia a fallback `@modelcontextprotocol/server-memory`, deja modo degradado y muestra comando de restauracion en consola.
 
 ## Instalacion rapida
 
@@ -54,6 +67,7 @@ El instalador de macOS:
 - usa **Homebrew** (si falta, lo instala),
 - garantiza `git`, `node` y `npx`,
 - configura MCP (`context7` + `engram`) en `~/.kiro/settings/mcp.json`,
+- hace hardening de actualizacion de Engram: detecta DB previa, crea backup versionado y prioriza reutilizacion/migracion de la misma DB,
 - hace probe automatico de `engram` y, si no arranca o falla por bindings nativos (`better-sqlite3`), aplica fallback automatico a `memory` sin pasos manuales,
 - deja `power-postman-postman` fuera por defecto en macOS,
 - sincroniza `steering` y `skills`,
@@ -114,7 +128,7 @@ El instalador `install-mcp-kiro.ps1` ahora corre un **preflight MCP** al final p
 
 - Verifica disponibilidad de `node` y `npx` en la sesion actual.
 - Ejecuta chequeo rapido de Context7 con `cmd /c npx -y @upstash/context7-mcp --help` (con timeout).
-- Ejecuta chequeo rapido del servidor de memoria configurado (`engram-mcp-server` o `@modelcontextprotocol/server-memory`) con la misma estrategia.
+- Ejecuta chequeo rapido del servidor de memoria configurado (`@gentleman-programming/engram-mcp-server` o `@modelcontextprotocol/server-memory`) con la misma estrategia.
 
 En macOS, `install-mcp-kiro-macos.sh` hace el mismo preflight con `npx -y <package> --help`.
 Ademas, en macOS se ejecuta un probe dedicado de Engram y, si no es compatible con el entorno, el instalador ajusta `~/.kiro/settings/mcp.json` para usar `@modelcontextprotocol/server-memory` automaticamente.

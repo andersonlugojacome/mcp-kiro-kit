@@ -68,6 +68,8 @@ IMPORTANT: When you detect any of these contexts, IMMEDIATELY load the correspon
 - Refrescar Context7 cada 4 consultas de usuario o antes si hay incertidumbre tecnica.
 - Si la tarea parece repetida, recuperar enfoque anterior y evitar rehacer diagnostico desde cero.
 - Priorizar: 1) contexto local del proyecto, 2) memoria Engram, 3) docs en Context7.
+- Fuente canonica de Engram para referencias de upstream: `https://github.com/Gentleman-Programming/engram`.
+- Si se menciona una version/tag de Engram en docs, usar formato `vX.Y.Z`.
 
 ## Criterio de Calidad de Entrega
 - Configuracion reproducible para teammates nuevos.
