@@ -33,7 +33,7 @@ Este workflow se complementa con la politica de ejecucion en background definida
 - Mantener JSON limpio y valido, sin comentarios.
 - Evitar rutas absolutas de una sola maquina en skills y steering.
 - No persistir secretos en archivos de equipo.
-- Usar linea canonica `@gentleman-programming/engram-mcp-server`.
+- Usar `engram mcp` si existe el binario `engram`; si no, usar paquete npm `engram-mcp-server`.
 - Si Engram falla, usar fallback `@modelcontextprotocol/server-memory` sin borrar backup de DB.
 - Si Context7 no responde, continuar con contexto local + Engram y reintentar en el siguiente checkpoint de 4 consultas.
 - En respuestas largas, incluir un bloque corto de "fuente usada" para dejar trazabilidad de cuando se consulto Context7.

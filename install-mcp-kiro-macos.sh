@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-MCP_KIRO_KIT_VERSION="1.0.11"
+MCP_KIRO_KIT_VERSION="1.0.12"
 WORKSPACE_PATH="${1:-}"
 ENGRAM_PACKAGE_CANONICAL="@gentleman-programming/engram-mcp-server"
 ENGRAM_DB_PRIMARY_DIR="$HOME/.engram"

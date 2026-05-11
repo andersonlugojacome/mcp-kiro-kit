@@ -2,7 +2,7 @@
 
 > One command. Any agent. Any OS. The MCPKiroKit ecosystem -- configured and ready.
 
-**Version: v1.0.11**
+**Version: v1.0.12**
 
 Paquete listo para dejar tu entorno de Kiro funcionando en Windows 11 o macOS con una instalacion guiada por **un solo script**.
 
@@ -34,11 +34,13 @@ Este paquete automatiza:
 
 ## Hardening de actualizacion Engram (sin perder memoria)
 
-- El instalador usa como linea canonica `@gentleman-programming/engram-mcp-server`.
+- El instalador prioriza el binario `engram` en PATH y configura MCP como `command: "engram", args: ["mcp"]`.
+- Si no existe el binario, usa el paquete npm valido `engram-mcp-server` con `npx -y engram-mcp-server`.
+- Antes de tocar `~/.kiro/settings/mcp.json`, crea backup completo de `~/.kiro` en `~/.kiro/backups/full/<yyyyMMdd-HHmmss>` excluyendo backups previos para evitar recursion.
 - Antes de tocar configuracion MCP, detecta DB existente de Engram en paths conocidos (`~/.engram`, `~/.kiro/engram`, `~/.config/engram`).
 - Si encuentra DB (`engram.db` y/o `engram.db-wal`/`engram.db-shm`), crea backup versionado en `~/.kiro/backups/engram/<yyyyMMdd-HHmmss>`.
 - Prioriza reutilizacion de DB in-place. Si detecta DB en path legado, la migra a `~/.engram`.
-- Si el arranque de la linea canonica falla, mantiene backup seguro, cambia a fallback `@modelcontextprotocol/server-memory`, deja modo degradado y muestra comando de restauracion en consola.
+- Solo si falla Engram por binario ausente y paquete npm no disponible, cambia a fallback `@modelcontextprotocol/server-memory`, deja modo degradado y muestra comandos de restauracion en consola.
 
 ## Instalacion rapida
 
@@ -54,6 +56,18 @@ iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/mai
 
 ```powershell
 iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1"
+```
+
+Simulacion segura online:
+
+```powershell
+iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1" -DryRun
+```
+
+Tambien podes usar la semantica estandar de PowerShell:
+
+```powershell
+iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1" -WhatIf
 ```
 
 ### Opcion D (macOS): SIN clonar (one-liner recomendado)
@@ -77,6 +91,10 @@ Si queres activarlo manualmente en macOS, agrega el servidor `power-postman-post
 
 `install-online.ps1` descarga `install-mcp-kiro.ps1` al directorio temporal, lo ejecuta con manejo de errores/TLS 1.2/salida UTF-8 y luego corre `verify-package.ps1` en modo amigable.
 
+En `-DryRun`/`-WhatIf`, el wrapper online tambien descarga temporalmente `install-mcp-kiro.ps1` para simular contra el instalador remoto actual y le propaga el modo no-op. Esa descarga puede escribir en `$env:TEMP`, pero no debe modificar `.kiro`, instalar paquetes, cambiar ExecutionPolicy, escribir metadata ni ejecutar la verificacion final. Los logs muestran el comando exacto delegado al instalador principal.
+
+Evita `irm ... | iex` para simulaciones con switches: no deja una forma clara de pasar `-DryRun`/`-WhatIf` al script. Descarga primero a `$env:TEMP` y ejecuta con `-File`, como en los ejemplos anteriores.
+
 Resultado de verificacion online:
 
 - **OK**: instalacion y validacion final correctas.
@@ -91,6 +109,28 @@ Si la descarga falla, verifica la conexion a internet, que la URL este bien escr
 # 2) Entra a la carpeta PACKAGE del proyecto extraido
 cd C:\ruta\al\proyecto\PACKAGE
 powershell -ExecutionPolicy RemoteSigned -File .\install-mcp-kiro.ps1
+```
+
+### Simulacion segura en Windows
+
+Antes de instalar, podes ver que haria el instalador sin modificar el sistema:
+
+```powershell
+powershell -ExecutionPolicy RemoteSigned -File .\install-mcp-kiro.ps1 -DryRun
+```
+
+Tambien soporta la semantica estandar de PowerShell:
+
+```powershell
+powershell -ExecutionPolicy RemoteSigned -File .\install-mcp-kiro.ps1 -WhatIf
+```
+
+En `-DryRun`/`-WhatIf`, el instalador permite detecciones read-only como PATH, existencia de archivos/directorios y seleccion de ruta MCP, pero omite cambios de ExecutionPolicy, instalaciones Scoop, backups, escrituras en `.kiro`, descargas, metadata y preflights con comandos externos que puedan descargar o cachear paquetes.
+
+Para simular el flujo online completo, usa el wrapper online con `-DryRun` o `-WhatIf`. El wrapper descargara una copia temporal del instalador principal y delegara el modo no-op:
+
+```powershell
+iwr -useb "https://raw.githubusercontent.com/andersonlugojacome/mcp-kiro-kit/main/install-online.ps1" -OutFile "$env:TEMP\install-online.ps1"; powershell -ExecutionPolicy RemoteSigned -File "$env:TEMP\install-online.ps1" -DryRun
 ```
 
 ### Verificacion manual (opcional)
@@ -128,10 +168,12 @@ El instalador `install-mcp-kiro.ps1` ahora corre un **preflight MCP** al final p
 
 - Verifica disponibilidad de `node` y `npx` en la sesion actual.
 - Ejecuta chequeo rapido de Context7 con `cmd /c npx -y @upstash/context7-mcp --help` (con timeout).
-- Ejecuta chequeo rapido del servidor de memoria configurado (`@gentleman-programming/engram-mcp-server` o `@modelcontextprotocol/server-memory`) con la misma estrategia.
+- Ejecuta chequeo rapido del servidor de memoria configurado (`engram mcp`, `npx -y engram-mcp-server` o `@modelcontextprotocol/server-memory`) con la misma estrategia.
 
 En macOS, `install-mcp-kiro-macos.sh` hace el mismo preflight con `npx -y <package> --help`.
 Ademas, en macOS se ejecuta un probe dedicado de Engram y, si no es compatible con el entorno, el instalador ajusta `~/.kiro/settings/mcp.json` para usar `@modelcontextprotocol/server-memory` automaticamente.
+
+En Windows, si el instalador entra en modo degradado, imprime los comandos PowerShell para restaurar el backup completo de `~/.kiro` y, si existia DB previa, el backup de `.engram`.
 
 Interpretacion del resultado:
 

@@ -1,5 +1,7 @@
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
-  [string]$WorkspacePath = ""
+  [string]$WorkspacePath = "",
+  [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -18,6 +20,30 @@ function Write-ErrorMsg {
 function Write-WarnMsg {
   param([string]$Message)
   Write-Host "[WARN] $Message" -ForegroundColor Yellow
+}
+
+function Write-DryRun {
+  param([string]$Message)
+  Write-Host "[DRYRUN] $Message" -ForegroundColor Magenta
+}
+
+function Test-NoOpMode {
+  return ($DryRun -or $WhatIfPreference)
+}
+
+function Format-CommandPreview {
+  param([string[]]$ArgumentList)
+
+  $quoted = foreach ($arg in $ArgumentList) {
+    if ($arg -match '[\s"'']') {
+      '"' + ($arg -replace '"', '\"') + '"'
+    }
+    else {
+      $arg
+    }
+  }
+
+  return "powershell $($quoted -join ' ')"
 }
 
 function Set-Utf8Output {
@@ -54,6 +80,10 @@ function Download-Installer {
     New-Item -ItemType Directory -Path $destDir -Force | Out-Null
   }
 
+  if (Test-NoOpMode) {
+    Write-DryRun "Se descargara temporalmente $Destination para simular con el instalador remoto actual; no se modificara .kiro ni se instalaran paquetes."
+  }
+
   Write-Info "Descargando instalador desde GitHub..."
   try {
     Invoke-WebRequest -Uri $Url -OutFile $Destination -UseBasicParsing
@@ -87,6 +117,18 @@ function Run-Installer {
 
   if (-not [string]::IsNullOrWhiteSpace($WorkspacePathValue)) {
     $args += @("-WorkspacePath", $WorkspacePathValue)
+  }
+
+  if ($DryRun) {
+    $args += "-DryRun"
+  }
+
+  if ($WhatIfPreference) {
+    $args += "-WhatIf"
+  }
+
+  if (Test-NoOpMode) {
+    Write-DryRun "Delegando no-op al instalador principal: $(Format-CommandPreview -ArgumentList $args)"
   }
 
   Write-Info "Ejecutando instalador descargado..."
@@ -133,6 +175,13 @@ try {
 
   Download-Installer -Url $rawUrl -Destination $localInstaller
   Run-Installer -InstallerPath $localInstaller -WorkspacePathValue $WorkspacePath
+
+  if (Test-NoOpMode) {
+    Write-Info "Verificacion final omitida: el modo no-op no aplica instalacion real."
+    Write-Info "Simulacion online finalizada. Solo pudo haberse escrito el instalador temporal descargado en $localInstaller."
+    exit 0
+  }
+
   Download-Installer -Url $verifyUrl -Destination $localVerifyScript
   Run-VerificationFriendly -VerifyScriptPath $localVerifyScript
 

@@ -30,7 +30,7 @@ Entregar en el chat un resumen tecnico y claro del estado MCP local.
    - `npx -v`
     - chequeo rapido:
       - `cmd /c npx -y @upstash/context7-mcp --help`
-      - `cmd /c npx -y @gentleman-programming/engram-mcp-server --help`
+      - `engram mcp --help` si existe el binario `engram`, o `cmd /c npx -y engram-mcp-server --help`
 
 ## Formato de respuesta
 

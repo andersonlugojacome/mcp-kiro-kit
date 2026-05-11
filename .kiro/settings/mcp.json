@@ -15,7 +15,7 @@
         "/c",
         "npx",
         "-y",
-        "@gentleman-programming/engram-mcp-server"
+        "engram-mcp-server"
       ]
     }
   }

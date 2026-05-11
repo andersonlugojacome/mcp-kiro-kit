@@ -1,10 +1,13 @@
+[CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = "Medium")]
 param(
-  [string]$WorkspacePath = ""
+  [string]$WorkspacePath = "",
+  [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
-$MCPKiroKitVersion = "1.0.11"
-$EngramPackageCanonical = "@gentleman-programming/engram-mcp-server"
+$MCPKiroKitVersion = "1.0.12"
+$EngramPackageCanonical = "engram-mcp-server"
+$EngramPackageFallback = "@modelcontextprotocol/server-memory"
 
 function Write-Info {
   param([string]$Message)
@@ -16,6 +19,29 @@ function Write-WarnMsg {
   Write-Host "[WARN] $Message" -ForegroundColor Yellow
 }
 
+function Write-DryRun {
+  param([string]$Message)
+  Write-Host "[DRYRUN] $Message" -ForegroundColor Magenta
+}
+
+function Test-NoOpMode {
+  return ($DryRun -or $WhatIfPreference)
+}
+
+function Should-Modify {
+  param(
+    [Parameter(Mandatory = $true)][string]$Target,
+    [Parameter(Mandatory = $true)][string]$Action
+  )
+
+  if ($DryRun) {
+    Write-DryRun "$Action -> $Target"
+    return $false
+  }
+
+  return $PSCmdlet.ShouldProcess($Target, $Action)
+}
+
 function Ensure-ExecutionPolicy {
   $policy = Get-ExecutionPolicy -Scope CurrentUser
   if ($policy -in @("RemoteSigned", "Unrestricted", "AllSigned")) {
@@ -24,6 +50,10 @@ function Ensure-ExecutionPolicy {
   }
 
   Write-Info "Ajustando ExecutionPolicy(CurrentUser) a RemoteSigned"
+  if (-not (Should-Modify -Target "ExecutionPolicy(CurrentUser)" -Action "Set RemoteSigned")) {
+    return
+  }
+
   Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force
 }
 
@@ -34,6 +64,10 @@ function Ensure-Scoop {
   }
 
   Write-Info "Instalando Scoop (modo usuario local)"
+  if (-not (Should-Modify -Target "Scoop" -Action "Install via https://get.scoop.sh")) {
+    return
+  }
+
   Invoke-RestMethod -Uri "https://get.scoop.sh" | Invoke-Expression
   if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
     throw "No se pudo instalar Scoop."
@@ -52,6 +86,10 @@ function Ensure-ScoopPackage {
   }
 
   Write-Info "Instalando $PackageName con scoop"
+  if (-not (Should-Modify -Target $PackageName -Action "scoop install")) {
+    return
+  }
+
   scoop install $PackageName
   if (-not (Get-Command $CommandName -ErrorAction SilentlyContinue)) {
     throw "No se pudo validar $CommandName despues de instalar $PackageName."
@@ -60,7 +98,17 @@ function Ensure-ScoopPackage {
 
 function Ensure-Npx {
   if (-not (Get-Command npx -ErrorAction SilentlyContinue)) {
+    if (Test-NoOpMode) {
+      Write-DryRun "npx no esta disponible en PATH actual; en instalacion real se validaria despues de instalar nodejs-lts."
+      return
+    }
+
     throw "npx no esta disponible. Verifica nodejs-lts."
+  }
+
+  if (Test-NoOpMode) {
+    Write-DryRun "Validaria npx con 'cmd /c npx --version'."
+    return
   }
 
   $version = & cmd /c npx --version
@@ -94,21 +142,29 @@ function Get-MemoryServerPackage {
 
       foreach ($serverProp in $parsed.mcpServers.PSObject.Properties) {
         $server = $serverProp.Value
-        if ($null -eq $server -or $null -eq $server.args) {
+        if ($null -eq $server) {
+          continue
+        }
+
+        if ($server.command -eq "engram") {
+          return "engram-binary"
+        }
+
+        if ($null -eq $server.args) {
           continue
         }
 
         foreach ($arg in @($server.args)) {
           if ($arg -eq "@gentleman-programming/engram-mcp-server") {
-            return "@gentleman-programming/engram-mcp-server"
+            return $EngramPackageCanonical
           }
 
           if ($arg -eq "engram-mcp-server") {
-            return "@gentleman-programming/engram-mcp-server"
+            return $EngramPackageCanonical
           }
 
           if ($arg -eq "@modelcontextprotocol/server-memory") {
-            return "@modelcontextprotocol/server-memory"
+            return $EngramPackageFallback
           }
         }
       }
@@ -118,7 +174,65 @@ function Get-MemoryServerPackage {
     }
   }
 
-  return "@gentleman-programming/engram-mcp-server"
+  return $EngramPackageCanonical
+}
+
+function New-EngramBinaryServerConfig {
+  return @{
+    command = "engram"
+    args = @("mcp")
+  }
+}
+
+function New-EngramNpxServerConfig {
+  return @{
+    command = "cmd"
+    args = @("/c", "npx", "-y", $EngramPackageCanonical)
+  }
+}
+
+function New-MemoryFallbackServerConfig {
+  return @{
+    command = "cmd"
+    args = @("/c", "npx", "-y", $EngramPackageFallback)
+  }
+}
+
+function Get-EngramMcpServerConfig {
+  if (Get-Command engram -ErrorAction SilentlyContinue) {
+    Write-Info "Engram MCP: se detecto binario 'engram' en PATH; usando command='engram', args=['mcp']."
+    return [ordered]@{
+      Name = "engram"
+      Config = (New-EngramBinaryServerConfig)
+      FallbackApplied = $false
+    }
+  }
+
+  if (Test-NoOpMode) {
+    Write-DryRun "No se ejecuta 'npx -y $EngramPackageCanonical --help'; podria descargar/cachear paquetes. Se simula ruta Engram via npx."
+    return [ordered]@{
+      Name = "engram"
+      Config = (New-EngramNpxServerConfig)
+      FallbackApplied = $false
+    }
+  }
+
+  Write-Info "Engram MCP: no se detecto binario 'engram'; probando paquete npm '$EngramPackageCanonical'."
+  if (Test-EngramServer -PackageName $EngramPackageCanonical) {
+    Write-Info "Engram MCP: paquete npm '$EngramPackageCanonical' disponible; usando npx."
+    return [ordered]@{
+      Name = "engram"
+      Config = (New-EngramNpxServerConfig)
+      FallbackApplied = $false
+    }
+  }
+
+  Write-WarnMsg "Engram MCP: fallo paquete npm '$EngramPackageCanonical'; degradando a '$EngramPackageFallback'."
+  return [ordered]@{
+    Name = "memory"
+    Config = (New-MemoryFallbackServerConfig)
+    FallbackApplied = $true
+  }
 }
 
 function Get-EngramDbPaths {
@@ -161,9 +275,55 @@ function Backup-EngramDb {
   $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
   $backupRoot = Join-Path $HomePath ".kiro/backups/engram"
   $backupDir = Join-Path $backupRoot $stamp
+  if (-not (Should-Modify -Target $backupDir -Action "Create Engram DB backup from $SourceDir")) {
+    return $backupDir
+  }
+
   New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
   Copy-Item -Path (Join-Path $SourceDir "*") -Destination $backupDir -Recurse -Force -ErrorAction SilentlyContinue
   Write-Info "Backup Engram creado: $backupDir"
+  return $backupDir
+}
+
+function Backup-KiroRoot {
+  param([Parameter(Mandatory = $true)][string]$HomePath)
+
+  $kiroRoot = Join-Path $HomePath ".kiro"
+  if (-not (Test-Path -LiteralPath $kiroRoot -PathType Container)) {
+    Write-Info "No existe $kiroRoot; no hay backup completo de .kiro para crear."
+    return $null
+  }
+
+  $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+  $backupRoot = Join-Path $kiroRoot "backups/full"
+  $backupDir = Join-Path $backupRoot $stamp
+  $stagingRoot = Join-Path $env:TEMP "mcpkirokit-kiro-backup"
+  $stagingDir = Join-Path $stagingRoot $stamp
+
+  if (-not (Should-Modify -Target $backupDir -Action "Create full .kiro backup excluding previous backups")) {
+    return $backupDir
+  }
+
+  if (Test-Path -LiteralPath $stagingDir) {
+    Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
+  New-Item -ItemType Directory -Path $stagingDir -Force | Out-Null
+
+  foreach ($item in Get-ChildItem -LiteralPath $kiroRoot -Force -ErrorAction SilentlyContinue) {
+    if ($item.Name -eq "backups") {
+      continue
+    }
+
+    Copy-Item -LiteralPath $item.FullName -Destination $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+  }
+
+  New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
+  Copy-Item -Path (Join-Path $stagingDir "*") -Destination $backupDir -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $stagingDir -Recurse -Force -ErrorAction SilentlyContinue
+
+  Write-Info "Backup completo de .kiro creado: $backupDir"
+  Write-Info "Nota: se excluyo .kiro/backups para evitar recursion de backups."
   return $backupDir
 }
 
@@ -183,6 +343,10 @@ function Prepare-EngramDbForCanonical {
     return
   }
 
+  if (-not (Should-Modify -Target $PrimaryDir -Action "Copy Engram DB from $DetectedDir")) {
+    return
+  }
+
   New-Item -ItemType Directory -Path $PrimaryDir -Force | Out-Null
   Copy-Item -Path (Join-Path $DetectedDir "*") -Destination $PrimaryDir -Recurse -Force -ErrorAction SilentlyContinue
   Write-Info "DB Engram migrada para linea canonica: $DetectedDir -> $PrimaryDir"
@@ -190,6 +354,11 @@ function Prepare-EngramDbForCanonical {
 
 function Test-EngramServer {
   param([Parameter(Mandatory = $true)][string]$PackageName)
+
+  if (Test-NoOpMode) {
+    Write-DryRun "Probaria paquete MCP con 'cmd /c npx -y $PackageName --help'."
+    return $true
+  }
 
   $job = Start-Job -ScriptBlock {
     param($InnerPackageName)
@@ -219,56 +388,42 @@ function Test-EngramServer {
   }
 }
 
-function Apply-MemoryFallbackIfNeeded {
+function Show-RestoreGuidance {
   param(
-    [Parameter(Mandatory = $true)][string]$SettingsFile,
-    [string]$BackupDir,
+    [string]$KiroBackupDir,
+    [string]$EngramBackupDir,
     [string]$DetectedDir,
-    [Parameter(Mandatory = $true)][string]$PrimaryDir
+    [Parameter(Mandatory = $true)][string]$PrimaryDir,
+    [switch]$FallbackApplied
   )
 
-  if (Test-EngramServer -PackageName $EngramPackageCanonical) {
-    Write-Info "Engram activo (sin fallback)."
+  if (-not $FallbackApplied) {
     return
   }
 
-  $existing = @{}
-  if (Test-Path -LiteralPath $SettingsFile) {
-    try {
-      $raw = Get-Content -LiteralPath $SettingsFile -Raw
-      if (-not [string]::IsNullOrWhiteSpace($raw)) {
-        $parsed = $raw | ConvertFrom-Json -AsHashtable
-        if ($parsed -is [hashtable]) {
-          $existing = $parsed
-        }
-      }
-    }
-    catch {
-      $existing = @{}
-    }
+  Write-WarnMsg "Modo degradado: se uso '$EngramPackageFallback' porque Engram no quedo disponible."
+
+  if (-not [string]::IsNullOrWhiteSpace($KiroBackupDir)) {
+    Write-WarnMsg "Backup completo .kiro conservado en $KiroBackupDir"
+    Write-Host "  Restaurar .kiro completo:" -ForegroundColor Yellow
+    Write-Host "  `$restoreStaging = Join-Path `$env:TEMP 'mcpkirokit-restore-kiro'" -ForegroundColor Yellow
+    Write-Host "  if (Test-Path `$restoreStaging) { Remove-Item `$restoreStaging -Recurse -Force }" -ForegroundColor Yellow
+    Write-Host "  New-Item -ItemType Directory -Path `$restoreStaging -Force | Out-Null" -ForegroundColor Yellow
+    Write-Host "  Copy-Item -Path '$KiroBackupDir\*' -Destination `$restoreStaging -Recurse -Force" -ForegroundColor Yellow
+    Write-Host "  if (Test-Path \"`$env:USERPROFILE\.kiro\") { Remove-Item \"`$env:USERPROFILE\.kiro\" -Recurse -Force }" -ForegroundColor Yellow
+    Write-Host "  New-Item -ItemType Directory -Path \"`$env:USERPROFILE\.kiro\" -Force | Out-Null" -ForegroundColor Yellow
+    Write-Host "  Copy-Item -Path (Join-Path `$restoreStaging '*') -Destination \"`$env:USERPROFILE\.kiro\" -Recurse -Force" -ForegroundColor Yellow
   }
 
-  if ($null -eq $existing["mcpServers"] -or -not ($existing["mcpServers"] -is [hashtable])) {
-    $existing["mcpServers"] = @{}
-  }
-
-  $existing["mcpServers"].Remove("engram") | Out-Null
-  if ($null -eq $existing["mcpServers"]["memory"]) {
-    $existing["mcpServers"]["memory"] = @{
-      command = "cmd"
-      args = @("/c", "npx", "-y", "@modelcontextprotocol/server-memory")
-    }
-  }
-
-  $json = $existing | ConvertTo-Json -Depth 20
-  Set-Content -LiteralPath $SettingsFile -Value $json -Encoding UTF8
-
-  Write-WarnMsg "Engram no compatible en este entorno; se aplico fallback automatico a memory"
-  if (-not [string]::IsNullOrWhiteSpace($BackupDir)) {
-    Write-WarnMsg "Modo degradado: backup seguro conservado en $BackupDir"
-    Write-WarnMsg "Restauracion sugerida: Copy-Item '$BackupDir\*' '$PrimaryDir' -Recurse -Force"
+  if (-not [string]::IsNullOrWhiteSpace($EngramBackupDir)) {
+    Write-WarnMsg "Backup Engram conservado en $EngramBackupDir"
+    Write-Host "  Restaurar Engram en path canonico:" -ForegroundColor Yellow
+    Write-Host "  New-Item -ItemType Directory -Path '$PrimaryDir' -Force | Out-Null" -ForegroundColor Yellow
+    Write-Host "  Copy-Item -Path '$EngramBackupDir\*' -Destination '$PrimaryDir' -Recurse -Force" -ForegroundColor Yellow
     if (-not [string]::IsNullOrWhiteSpace($DetectedDir) -and $DetectedDir -ne $PrimaryDir) {
-      Write-WarnMsg "Tambien podes restaurar al path legado: Copy-Item '$BackupDir\*' '$DetectedDir' -Recurse -Force"
+      Write-Host "  Restaurar Engram en path previo:" -ForegroundColor Yellow
+      Write-Host "  New-Item -ItemType Directory -Path '$DetectedDir' -Force | Out-Null" -ForegroundColor Yellow
+      Write-Host "  Copy-Item -Path '$EngramBackupDir\*' -Destination '$DetectedDir' -Recurse -Force" -ForegroundColor Yellow
     }
   }
 }
@@ -279,6 +434,11 @@ function Invoke-PreflightNpxPackage {
     [Parameter(Mandatory = $true)][string]$CheckLabel,
     [int]$TimeoutSeconds = 25
   )
+
+  if (Test-NoOpMode) {
+    Write-DryRun "Preflight ${CheckLabel}: ejecutaria 'cmd /c npx -y $PackageName --help' con timeout de $TimeoutSeconds s."
+    return $true
+  }
 
   $job = Start-Job -ScriptBlock {
     param($InnerPackageName)
@@ -317,6 +477,49 @@ function Invoke-PreflightNpxPackage {
   }
 }
 
+function Invoke-PreflightEngramBinary {
+  param([int]$TimeoutSeconds = 25)
+
+  if (Test-NoOpMode) {
+    Write-DryRun "Preflight Engram binario: ejecutaria 'engram mcp --help' con timeout de $TimeoutSeconds s."
+    return $true
+  }
+
+  $job = Start-Job -ScriptBlock {
+    $ErrorActionPreference = "Stop"
+    & engram mcp --help *> $null
+    if ($LASTEXITCODE -ne 0) {
+      throw "El proceso devolvio codigo $LASTEXITCODE"
+    }
+  }
+
+  try {
+    $completed = Wait-Job -Job $job -Timeout $TimeoutSeconds
+    if (-not $completed) {
+      Stop-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
+      Write-WarnMsg "Preflight Engram binario: WARN (timeout de $TimeoutSeconds s)"
+      return $false
+    }
+
+    if ($job.State -eq "Failed") {
+      $jobError = Receive-Job -Job $job -ErrorAction SilentlyContinue
+      if ([string]::IsNullOrWhiteSpace("$jobError")) {
+        $jobError = $job.ChildJobs[0].JobStateInfo.Reason.Message
+      }
+
+      Write-WarnMsg "Preflight Engram binario: WARN ($jobError)"
+      return $false
+    }
+
+    Receive-Job -Job $job -ErrorAction SilentlyContinue | Out-Null
+    Write-Info "Preflight Engram binario: OK"
+    return $true
+  }
+  finally {
+    Remove-Job -Job $job -Force -ErrorAction SilentlyContinue | Out-Null
+  }
+}
+
 function Invoke-McpPreflight {
   param(
     [string]$MemoryServerPackage
@@ -326,13 +529,19 @@ function Invoke-McpPreflight {
   $warnings = New-Object System.Collections.Generic.List[string]
 
   if (Get-Command node -ErrorAction SilentlyContinue) {
-    & cmd /c node --version *> $null
-    if ($LASTEXITCODE -eq 0) {
-      Write-Info "Preflight node: OK"
+    if (Test-NoOpMode) {
+      Write-DryRun "Preflight node: validaria 'cmd /c node --version'."
+      Write-Info "Preflight node: SKIP (DryRun/WhatIf)"
     }
     else {
-      Write-WarnMsg "Preflight node: WARN (node no responde correctamente)"
-      $warnings.Add("node") | Out-Null
+      & cmd /c node --version *> $null
+      if ($LASTEXITCODE -eq 0) {
+        Write-Info "Preflight node: OK"
+      }
+      else {
+        Write-WarnMsg "Preflight node: WARN (node no responde correctamente)"
+        $warnings.Add("node") | Out-Null
+      }
     }
   }
   else {
@@ -341,13 +550,19 @@ function Invoke-McpPreflight {
   }
 
   if (Get-Command npx -ErrorAction SilentlyContinue) {
-    & cmd /c npx --version *> $null
-    if ($LASTEXITCODE -eq 0) {
-      Write-Info "Preflight npx: OK"
+    if (Test-NoOpMode) {
+      Write-DryRun "Preflight npx: validaria 'cmd /c npx --version'."
+      Write-Info "Preflight npx: SKIP (DryRun/WhatIf)"
     }
     else {
-      Write-WarnMsg "Preflight npx: WARN (npx no responde correctamente)"
-      $warnings.Add("npx") | Out-Null
+      & cmd /c npx --version *> $null
+      if ($LASTEXITCODE -eq 0) {
+        Write-Info "Preflight npx: OK"
+      }
+      else {
+        Write-WarnMsg "Preflight npx: WARN (npx no responde correctamente)"
+        $warnings.Add("npx") | Out-Null
+      }
     }
   }
   else {
@@ -360,7 +575,12 @@ function Invoke-McpPreflight {
     $warnings.Add("context7") | Out-Null
   }
 
-  $memoryOk = Invoke-PreflightNpxPackage -PackageName $MemoryServerPackage -CheckLabel "memory server ($MemoryServerPackage)"
+  if ($MemoryServerPackage -eq "engram-binary") {
+    $memoryOk = Invoke-PreflightEngramBinary
+  }
+  else {
+    $memoryOk = Invoke-PreflightNpxPackage -PackageName $MemoryServerPackage -CheckLabel "memory server ($MemoryServerPackage)"
+  }
   if (-not $memoryOk) {
     $warnings.Add("memory") | Out-Null
   }
@@ -410,7 +630,7 @@ function Ensure-KiroMcpSettings {
 
   $settingsDir = Join-Path $RootPath ".kiro/settings"
   $settingsFile = Join-Path $settingsDir "mcp.json"
-  New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
+  $memoryRoute = Get-EngramMcpServerConfig
 
   $desired = @{
     mcpServers = @{
@@ -418,12 +638,10 @@ function Ensure-KiroMcpSettings {
         command = "cmd"
         args = @("/c", "npx", "-y", "@upstash/context7-mcp")
       }
-      engram = @{
-        command = "cmd"
-        args = @("/c", "npx", "-y", "@gentleman-programming/engram-mcp-server")
-      }
     }
   }
+
+  $desired.mcpServers[$memoryRoute["Name"]] = $memoryRoute["Config"]
 
   $existing = @{}
   if (Test-Path -LiteralPath $settingsFile) {
@@ -442,10 +660,25 @@ function Ensure-KiroMcpSettings {
   }
 
   Merge-Hashtable -Base $existing -Incoming $desired
+  if ($memoryRoute["Name"] -eq "engram" -and $existing["mcpServers"] -is [hashtable]) {
+    $existing["mcpServers"].Remove("memory") | Out-Null
+  }
+  elseif ($memoryRoute["Name"] -eq "memory" -and $existing["mcpServers"] -is [hashtable]) {
+    $existing["mcpServers"].Remove("engram") | Out-Null
+  }
+
   $json = $existing | ConvertTo-Json -Depth 20
+  if (-not (Should-Modify -Target $settingsFile -Action "Write MCP settings")) {
+    Write-Info "MCP quedaria configurado en $settingsFile"
+    Write-Info "Servidores MCP declarados: context7, $($memoryRoute["Name"])"
+    return $memoryRoute
+  }
+
+  New-Item -ItemType Directory -Path $settingsDir -Force | Out-Null
   Set-Content -LiteralPath $settingsFile -Value $json -Encoding UTF8
   Write-Info "MCP configurado en $settingsFile"
-  Write-Info "Servidores MCP declarados: context7, engram"
+  Write-Info "Servidores MCP declarados: context7, $($memoryRoute["Name"])"
+  return $memoryRoute
 }
 
 function Ensure-KiroBaseContent {
@@ -453,6 +686,10 @@ function Ensure-KiroBaseContent {
 
   $steeringDir = Join-Path $HomePath ".kiro/steering"
   $skillDir = Join-Path $HomePath ".kiro/skills"
+  if (-not (Should-Modify -Target (Join-Path $HomePath ".kiro") -Action "Create base steering and skills content")) {
+    return
+  }
+
   New-Item -ItemType Directory -Path $steeringDir -Force | Out-Null
   New-Item -ItemType Directory -Path $skillDir -Force | Out-Null
 
@@ -530,6 +767,10 @@ function Copy-KiroAssets {
     throw "No se encontraron carpetas .kiro/steering y .kiro/skills en el paquete descargado."
   }
 
+  if (-not (Should-Modify -Target $targetKiroRoot -Action "Copy steering and skills for $TargetLabel")) {
+    return
+  }
+
   New-Item -ItemType Directory -Path $targetSteering -Force | Out-Null
   New-Item -ItemType Directory -Path $targetSkills -Force | Out-Null
 
@@ -559,6 +800,11 @@ function Sync-KiroAssetsFromRepo {
   $tempRoot = Join-Path $env:TEMP "mcpkirokit-assets"
   $zipPath = Join-Path $tempRoot "mcp-kiro-kit-main.zip"
   $extractPath = Join-Path $tempRoot "extracted"
+
+  if (-not (Should-Modify -Target $tempRoot -Action "Download and sync steering/skills assets from $zipUrl")) {
+    Write-DryRun "Copiaria steering/skills a $HomePath\.kiro y, si existe, al WorkspacePath '$WorkspacePath'."
+    return $true
+  }
 
   try {
     New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
@@ -612,6 +858,10 @@ function Save-InstallMetadata {
     installedAt = (Get-Date).ToString("o")
   }
 
+  if (-not (Should-Modify -Target $metaPath -Action "Write install metadata")) {
+    return
+  }
+
   $meta | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $metaPath -Encoding UTF8
   Write-Info "Version instalada registrada en $metaPath"
 }
@@ -624,6 +874,10 @@ function Invoke-DailyUpdateNotice {
 
   $checkerPath = Join-Path $HomePath ".kiro/tools/check-mcpkirokit-update.ps1"
   if (-not (Test-Path -LiteralPath $checkerPath)) {
+    return
+  }
+
+  if (-not (Should-Modify -Target $checkerPath -Action "Run daily update notice")) {
     return
   }
 
@@ -655,6 +909,12 @@ function Show-KiroCliStatus {
 }
 
 Write-Info "Inicio de instalacion MCP para Kiro (modo usuario local)"
+if ($DryRun) {
+  Write-DryRun "Simulacion activa: se permiten detecciones read-only, pero no escrituras, descargas, instalaciones ni comandos externos de prueba."
+}
+elseif ($WhatIfPreference) {
+  Write-Info "WhatIf activo: PowerShell mostrara acciones modificadoras sin ejecutarlas."
+}
 Ensure-ExecutionPolicy
 Ensure-Scoop
 Ensure-ScoopPackage -CommandName "git" -PackageName "git"
@@ -670,12 +930,13 @@ if (-not [string]::IsNullOrWhiteSpace($dbPaths.DetectedDir)) {
 }
 Prepare-EngramDbForCanonical -DetectedDir $dbPaths.DetectedDir -PrimaryDir $dbPaths.PrimaryDir
 
-Ensure-KiroMcpSettings -RootPath $userHome
-Apply-MemoryFallbackIfNeeded -SettingsFile (Join-Path $userHome ".kiro/settings/mcp.json") -BackupDir $backupDir -DetectedDir $dbPaths.DetectedDir -PrimaryDir $dbPaths.PrimaryDir
+$kiroBackupDir = Backup-KiroRoot -HomePath $userHome
+$memoryRoute = Ensure-KiroMcpSettings -RootPath $userHome
+Show-RestoreGuidance -KiroBackupDir $kiroBackupDir -EngramBackupDir $backupDir -DetectedDir $dbPaths.DetectedDir -PrimaryDir $dbPaths.PrimaryDir -FallbackApplied:([bool]$memoryRoute["FallbackApplied"])
 
 if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
   if (Test-Path -LiteralPath $WorkspacePath) {
-    Ensure-KiroMcpSettings -RootPath $WorkspacePath
+    Ensure-KiroMcpSettings -RootPath $WorkspacePath | Out-Null
   }
   else {
     Write-WarnMsg "WorkspacePath no existe: $WorkspacePath"
@@ -701,4 +962,9 @@ if (-not [string]::IsNullOrWhiteSpace($WorkspacePath)) {
 $memoryServerPackage = Get-MemoryServerPackage -SettingsFiles $settingsFiles
 Invoke-McpPreflight -MemoryServerPackage $memoryServerPackage
 Show-KiroCliStatus
-Write-Info "Listo. Reinicia Kiro para aplicar la configuracion MCP."
+if (Test-NoOpMode) {
+  Write-Info "Simulacion finalizada. No se aplicaron cambios; no hace falta reiniciar Kiro por esta ejecucion."
+}
+else {
+  Write-Info "Listo. Reinicia Kiro para aplicar la configuracion MCP."
+}
