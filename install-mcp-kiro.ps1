@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$MCPKiroKitVersion = "1.0.12"
+$MCPKiroKitVersion = "1.0.13"
 $EngramPackageCanonical = "engram-mcp-server"
 $EngramPackageFallback = "@modelcontextprotocol/server-memory"
 
@@ -208,26 +208,31 @@ function Get-EngramMcpServerConfig {
     }
   }
 
-  if (Test-NoOpMode) {
-    Write-DryRun "No se ejecuta 'npx -y $EngramPackageCanonical --help'; podria descargar/cachear paquetes. Se simula ruta Engram via npx."
-    return [ordered]@{
-      Name = "engram"
-      Config = (New-EngramNpxServerConfig)
-      FallbackApplied = $false
+  if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
+    Write-Info "Go no esta instalado y es necesario para compilar Engram. Instalando Go via Scoop..."
+    try {
+      Ensure-Scoop
+      Ensure-ScoopPackage -CommandName "go" -PackageName "go"
+    } catch {
+      Write-WarnMsg "No se pudo instalar Go automaticamente: $($_.Exception.Message)"
     }
   }
 
-  Write-Info "Engram MCP: no se detecto binario 'engram'; probando paquete npm '$EngramPackageCanonical'."
-  if (Test-EngramServer -PackageName $EngramPackageCanonical) {
-    Write-Info "Engram MCP: paquete npm '$EngramPackageCanonical' disponible; usando npx."
-    return [ordered]@{
-      Name = "engram"
-      Config = (New-EngramNpxServerConfig)
-      FallbackApplied = $false
+  if (Get-Command go -ErrorAction SilentlyContinue) {
+    Write-Info "Engram MCP: 'go' esta disponible. Instalando oficial..."
+    & go install github.com/Gentleman-Programming/engram/cmd/engram@latest
+    if ($LASTEXITCODE -eq 0) {
+      Write-Info "Engram instalado exitosamente via go install."
+      return [ordered]@{
+        Name = "engram"
+        Config = (New-EngramBinaryServerConfig)
+        FallbackApplied = $false
+      }
     }
   }
 
-  Write-WarnMsg "Engram MCP: fallo paquete npm '$EngramPackageCanonical'; degradando a '$EngramPackageFallback'."
+  Write-WarnMsg "Engram no esta instalado. Por favor instale el binario oficial desde: https://github.com/Gentleman-Programming/engram"
+  Write-WarnMsg "Engram MCP: degradando a '$EngramPackageFallback'."
   return [ordered]@{
     Name = "memory"
     Config = (New-MemoryFallbackServerConfig)

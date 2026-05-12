@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-MCP_KIRO_KIT_VERSION="1.0.12"
+MCP_KIRO_KIT_VERSION="1.0.13"
 WORKSPACE_PATH="${1:-}"
 ENGRAM_PACKAGE_CANONICAL="@gentleman-programming/engram-mcp-server"
 ENGRAM_DB_PRIMARY_DIR="$HOME/.engram"
@@ -114,8 +114,8 @@ desired = {
             "args": ["-y", "@upstash/context7-mcp"],
         },
         "engram": {
-            "command": "npx",
-            "args": ["-y", "@gentleman-programming/engram-mcp-server"],
+            "command": "engram",
+            "args": ["mcp"],
         },
     }
 }
@@ -175,65 +175,29 @@ PY
 }
 
 probe_engram_server() {
-  local package_name="$1"
-  local probe_status
-  probe_status="$(python3 - "$package_name" <<'PY'
-import subprocess
-import sys
-
-patterns = [
-    "better_sqlite3",
-    "better-sqlite3",
-    "could not locate the bindings file",
-    "bindings",
-    "node-v",
-    "mcp error -32000",
-]
-
-try:
-    package_name = sys.argv[1]
-    proc = subprocess.run(
-        ["npx", "-y", package_name, "--help"],
-        capture_output=True,
-        text=True,
-        timeout=30,
-        check=False,
-    )
-except subprocess.TimeoutExpired:
-    print("timeout")
-    raise SystemExit(0)
-except Exception:
-    print("failed")
-    raise SystemExit(0)
-
-output = ((proc.stdout or "") + "\n" + (proc.stderr or "")).lower()
-if proc.returncode == 0:
-    print("ok")
-elif any(pattern in output for pattern in patterns):
-    print("native")
-else:
-    print("failed")
-PY
-)"
-
-  case "$probe_status" in
-  ok)
-    write_info "Probe Engram: OK"
+  if command -v engram >/dev/null 2>&1; then
+    write_info "Probe Engram: OK (binario engram detectado)"
     return 0
-    ;;
-  native)
-    write_warn "Probe Engram: WARN (falla nativa detectada)"
-    return 1
-    ;;
-  timeout)
-    write_warn "Probe Engram: WARN (timeout/no arranca)"
-    return 1
-    ;;
-  *)
-    write_warn "Probe Engram: WARN"
-    return 1
-    ;;
-  esac
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    if ! command -v go >/dev/null 2>&1; then
+      write_info "Go no detectado. Instalando Go vía Homebrew..."
+      brew install go
+    fi
+    
+    write_info "Engram no detectado. Instalando vía Homebrew (https://github.com/Gentleman-Programming/engram)..."
+    if brew install gentleman-programming/tap/engram; then
+      write_info "Probe Engram: OK (instalado exitosamente)"
+      return 0
+    else
+      write_warn "Fallo al instalar Engram vía Homebrew."
+    fi
+  fi
+
+  write_warn "Probe Engram: WARN (Engram no encontrado)"
+  write_warn "Por favor instale el binario oficial de Engram: https://github.com/Gentleman-Programming/engram"
+  return 1
 }
 
 ensure_kiro_mcp_settings() {
